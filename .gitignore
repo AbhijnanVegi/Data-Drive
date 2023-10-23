@@ -1,0 +1,6 @@
+# data dirs
+minio-data
+mongo-data
+
+# editor files
+.vscode
