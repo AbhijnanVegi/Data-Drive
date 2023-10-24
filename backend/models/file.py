@@ -1,18 +1,17 @@
+from enum import Enum
+
 from backend.models.orm import db
 from backend.models.user import User
 
-class Permission(db.Enum):
+class Permission(Enum):
     READ = 'read'
     WRITE = 'write'
     NONE = 'none'
 
 class File(db.Document):
-    name = db.StringField(required=True)
     path = db.StringField(required=True, unique=True)
-    size = db.IntField(required=True)
+    size = db.IntField(required=True, default = 0)
     owner = db.ReferenceField(User, required=True)
-    created_at = db.DateTimeField(required=True)
-    updated_at = db.DateTimeField(required=True)
 
     public = db.EnumField(Permission, required=True, default=Permission.NONE)
 
@@ -21,6 +20,23 @@ class File(db.Document):
             'path',
         ]
     }
+
+    def get_permission(self, user):
+        if self.owner == user:
+            return Permission.WRITE
+
+        shared_file = SharedFile.objects(file=self, user=user).first()
+        if shared_file:
+            return shared_file.permission
+
+        return self.public
+
+    def can_write(self, user):
+        return self.get_permission(user) == Permission.WRITE
+
+    def can_read(self, user):
+        return self.get_permission(user) in [Permission.WRITE, Permission.READ]
+
 
 class SharedFile(db.Document):
     file = db.ReferenceField(File, required=True)

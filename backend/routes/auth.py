@@ -4,10 +4,15 @@ from backend.models.user import User
 
 auth_bp = Blueprint('auth', __name__)
 
-from backend.models.user import User
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
+    """
+    Desc: Register a new user
+    Params: username = string
+            email = string
+            password = string
+    """
     # Get user data from request
     data = request.get_json()
     username = data.get('username')
@@ -18,10 +23,19 @@ def register():
         return jsonify({'message': 'User with that email already exists!'}), 400
 
     user = User(**data).save()
+
+    # Create home directory for user
+    File(path=username, size=0, owner=user).save()
     return jsonify({'message': 'User registered successfully!'})
+
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
+    """
+    Desc: Register a new user
+    Params: email = string
+            password = string
+    """
     # Get user data from request
     data = request.get_json()
     email = data.get('email')
@@ -41,12 +55,22 @@ def login():
 
     return jsonify({'message': 'User logged in successfully!'})
 
+
 @auth_bp.route('/user', methods=['GET'])
 def user():
+    """
+    Desc: Test if user is logged in
+    Params: None
+    """
     return jsonify({'user': session.get('user_id')})
+
 
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
+    """
+    Desc: Logs out user
+    Params: None
+    """
     # Clear session for user
     session.clear()
 
