@@ -1,4 +1,4 @@
-import os, mimetypes
+import os, mimetypes, io
 
 from flask import Blueprint, request, jsonify, session, send_file
 from werkzeug.utils import secure_filename
@@ -10,27 +10,6 @@ from backend.storage.client import minio_client as mc
 
 files_bp = Blueprint('files', __name__)
 CORS(files_bp, supports_credentials=True)
-
-@files_bp.route('/<path:path>', methods=['GET'])
-def get_file(path):
-    """
-    Desc: Get file from storage
-    Params: path = string
-    """
-    file = File.objects(path=path).first()
-    if not file:
-        return jsonify({'message': 'File does not exist!'}), 400
-
-    user = User.objects(id=session.get('user_id')).first()
-    if not file.can_read(user):
-        return jsonify({'message': 'You do not have permission to access this file!'}), 400
-
-    try:
-        mc.fget_object('data-drive', path, '/tmp/' + path)
-        return send_file('/tmp/' + path)
-    except Exception as err:
-        return jsonify({'message': str(err)}), 400
-
 
 @files_bp.route('/upload', methods=['POST'])
 def upload_file():
@@ -102,6 +81,7 @@ def mkdir():
         return jsonify({'message': 'You do not have permission to create a directory here!'}), 400
 
     directory = File(path = data.get('path'), owner = user).save()
+    mc.put_object('data-drive', data.get('path') + '/_', io.BytesIO(b''), 0)
     return jsonify({'message': 'Directory created successfully!'})
 
 @files_bp.route('/create_home', methods=['POST'])
@@ -117,3 +97,55 @@ def create_home():
 
     File(path=user.username, size=0, owner=user).save()
     return jsonify({'message': 'Home directory created successfully!'})
+
+@files_bp.route('/list', methods=['POST'])
+def list():
+    """
+    Desc: List files in directory
+    Params: path = string
+    Returns: objects = list({path, is_dir, last_modified, size, metadata})
+    """
+    data = request.get_json()
+
+    directory = File.objects(path=data.get('path')).first()
+    if not directory:
+        return jsonify({'message': 'Directory does not exist!'}), 400
+
+    user = User.objects(id=session.get('user_id')).first()
+    if not directory.can_read(user):
+        return jsonify({'message': 'You do not have permission to access this directory!'}), 400    
+
+    objects = mc.list_objects('data-drive', prefix = data.get('path') +'/', include_user_meta = True)
+    obj_json = []
+    for obj in objects:
+        print(obj.object_name, obj.is_dir, obj.last_modified, obj.etag, obj.size, obj.content_type, obj.metadata)
+        obj_json.append({
+            'path': obj.object_name,
+            'is_dir': obj.is_dir,
+            'last_modified': obj.last_modified,
+            'size': obj.size,
+            'metadata': obj.metadata
+        })
+
+    return jsonify({'objects': obj_json})
+
+
+@files_bp.route('/<path:path>', methods=['GET'])
+def get_file(path):
+    """
+    Desc: Get file from storage
+    Params: path = string
+    """
+    file = File.objects(path=path).first()
+    if not file:
+        return jsonify({'message': 'File does not exist!'}), 400
+
+    user = User.objects(id=session.get('user_id')).first()
+    if not file.can_read(user):
+        return jsonify({'message': 'You do not have permission to access this file!'}), 400
+
+    try:
+        mc.fget_object('data-drive', path, '/tmp/' + path)
+        return send_file('/tmp/' + path)
+    except Exception as err:
+        return jsonify({'message': str(err)}), 400
