@@ -2,13 +2,14 @@ import os, mimetypes
 
 from flask import Blueprint, request, jsonify, session, send_file
 from werkzeug.utils import secure_filename
-
+from flask_cors import CORS
 from backend.models.user import User
 from backend.models.file import File, SharedFile, Permission
 
 from backend.storage.client import minio_client as mc
 
 files_bp = Blueprint('files', __name__)
+CORS(files_bp, supports_credentials=True)
 
 @files_bp.route('/<path:path>', methods=['GET'])
 def get_file(path):

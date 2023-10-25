@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify, session
-
+from flask_cors import CORS
 from backend.models.user import User
+from backend.models.file import File
 
 auth_bp = Blueprint('auth', __name__)
-
+CORS(auth_bp, supports_credentials=True)
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
