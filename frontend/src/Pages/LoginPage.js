@@ -4,7 +4,6 @@ import '../css/LoginPage.css'
 import axios from 'axios';
 import Particles from "react-particles";
 import { loadSlim } from "tsparticles-slim"; // if you are going to use `loadSlim`, install the "tsparticles-slim" package too.
-import { ToastContainer, toast } from 'react-toastify';
 
 const { TabPane } = Tabs;
 
@@ -262,7 +261,6 @@ const LoginPage = () => {
                         </TabPane>
                     </Tabs>
                 </div>
-                <ToastContainer />
             </div>
         </ConfigProvider>
     );
