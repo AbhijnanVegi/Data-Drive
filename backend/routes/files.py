@@ -130,7 +130,7 @@ def list():
     return jsonify({'objects': obj_json})
 
 
-@files_bp.route('/<path:path>', methods=['GET'])
+@files_bp.route('/get/<path:path>', methods=['GET'])
 def get_file(path):
     """
     Desc: Get file from storage
@@ -147,5 +147,25 @@ def get_file(path):
     try:
         mc.fget_object('data-drive', path, '/tmp/' + path)
         return send_file('/tmp/' + path)
+    except Exception as err:
+        return jsonify({'message': str(err)}), 400
+
+@files_bp.route('/download/<path:path>', methods=['GET'])
+def download_file(path):
+    """
+    Desc: Download file from storage
+    Params: path = string
+    """
+    file = File.objects(path=path).first()
+    if not file:
+        return jsonify({'message': 'File does not exist!'}), 400
+
+    user = User.objects(id=session.get('user_id')).first()
+    if not file.can_read(user):
+        return jsonify({'message': 'You do not have permission to access this file!'}), 400
+
+    try:
+        mc.fget_object('data-drive', path, '/tmp/' + path)
+        return send_file('/tmp/' + path, as_attachment=True)
     except Exception as err:
         return jsonify({'message': str(err)}), 400
