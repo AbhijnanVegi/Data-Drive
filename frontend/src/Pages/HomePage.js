@@ -138,6 +138,12 @@ const HomePage = () => {
                     if (tempElement.name === "") {
                         tempElement.name = pathArray[pathArray.length - 2];
                     }
+                    // find the extension of the file
+                    const extensionArray = tempElement.name.split('.');
+                    tempElement.ext = extensionArray[extensionArray.length - 1];
+                    if(tempElement.ext === 'png' || tempElement.ext === 'jpg' || tempElement.ext === 'jpeg'){
+                        tempElement.thumbnailUrl = "http://localhost:5000/"+tempElement.id;
+                    }
                     tempFileArray.push(tempElement);
                 });
                 console.log("file array", tempFileArray);

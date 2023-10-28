@@ -18,6 +18,7 @@
 
 [class*=' Mui'],[class^='Mui'] {
     font-family: Quicksand !important;
+    font-size: 17px;
 }
 
 [class*=' ant'],[class^='ant'] {
