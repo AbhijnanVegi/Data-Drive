@@ -159,7 +159,7 @@ const HomePage = () => {
                             // find the extension of the file
                             const extensionArray = tempElement.name.split('.');
                             tempElement.ext = extensionArray[extensionArray.length - 1];
-                            if (tempElement.ext === 'png' || tempElement.ext === 'jpg' || tempElement.ext === 'jpeg') {
+                            if (tempElement.ext === 'png' || tempElement.ext === 'jpg' || tempElement.ext === 'jpeg' || tempElement.ext === 'gif' || tempElement.ext === 'bmp' || tempElement.ext === 'svg') {
                                 tempElement.thumbnailUrl = "http://localhost:5000/get/" + tempElement.id;
                             }
 
