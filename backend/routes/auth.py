@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify, session
 from flask_cors import CORS
 from backend.models.user import User
 from backend.models.file import File
+from backend.storage.client import minio_client as mc
+import io
 
 auth_bp = Blueprint('auth', __name__)
 CORS(auth_bp, supports_credentials=True)
@@ -26,7 +28,9 @@ def register():
     user = User(**data).save()
 
     # Create home directory for user
-    File(path=username, size=0, owner=user).save()
+    File(path=username, size=0, owner=user, is_dir=True).save()
+    mc.put_object('data-drive', username + '/_', io.BytesIO(b''), 0)
+
     return jsonify({'message': 'User registered successfully!'})
 
 

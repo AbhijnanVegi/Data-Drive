@@ -15,6 +15,8 @@ class File(db.Document):
 
     public = db.EnumField(Permission, required=True, default=Permission.NONE)
 
+    is_dir = db.BooleanField(required=True, default=False)
+
     meta = {
         'indexes': [
             'path',
@@ -43,6 +45,7 @@ class SharedFile(db.Document):
     user = db.ReferenceField(User, required=True)
     permission = db.EnumField(Permission, required=True)
 
+    path = db.StringField(required=True)
     meta = {
         'indexes': [
             'file',
