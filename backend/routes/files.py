@@ -50,12 +50,12 @@ def upload_file():
         mc.fput_object('data-drive', data.get('path'), '/tmp/' + secure_filename(data.get('path')), content_type)
 
         # Create database entry for file
-        file = File(path=data.get('path'), size=file.content_length, owner=user, public=directory.public, is_dir=False).save()
+        file = File(path=data.get('path'), size=file.content_length, owner=user, public=directory.public,
+                    is_dir=False).save()
 
         # Inherit permissions from parent directory
         shares = SharedFile.objects(file=directory)
         for share in shares:
-
             SharedFile(file=file, user=share.user, permission=share.permission,
                        path=f"shared/{share.user.username}/" + file.path).save()
 
@@ -169,87 +169,62 @@ def share():
         parent_user, child_user, is_file
     """
 
+    parent_user = session.get('user_id')
+    if not parent_user:
+        return jsonify({'message': 'No user logged in!'}), 400
+
     data = request.get_json()
 
-    is_file = data.get('is_file')
-
-    parent_user = User.objects(username=data.get('parent_user')).first()
     child_user = User.objects(username=data.get('child_user')).first()
     permission = data.get('permission')
 
-    if not parent_user:
-        return jsonify({'message': 'Parent user does not exist!'}), 400
     if not child_user:
         return jsonify({'message': 'Child user does not exist!'}), 400
     if not permission:
         return jsonify({'message': 'Permission not provided!'}), 400
 
-    obj_json = []
+    file = File.objects(path=data.get('path')).first()
 
-    is_file = not File.objects(path=data.get('path')).first().is_dir
-
-    if is_file:
-        path = data.get('path')
-        file = File.objects(path=path).first()
-        if not file:
-            return jsonify({'message': 'File does not exist!'}), 400
-
-        shared_file = SharedFile(file=file, user=child_user, permission=permission,
-                                 path=f"shared/{child_user.username}/" + path).save()
-
-        if not shared_file:
-            return jsonify({'message': 'File does not exist!'}), 400
+    if file is None:
+        return jsonify({'message': 'File does not exist!'}), 400
+    else:
+        shared_file = SharedFile.objects(file=file, user=child_user).first()
+        if shared_file is None:
+            shared_file = SharedFile(file=file, user=child_user, permission=permission, explicit=True).save()
         else:
-            shared_json = {
+            shared_file.permission = permission
+            shared_file.save()
+
+    obj_json = [{
+        'path': shared_file.file.path,
+        'user': shared_file.user.username,
+        'permission': shared_file.permission.value
+    }]
+
+    objects = mc.list_objects('data-drive', prefix=data.get('path') + '/', recursive=True, include_user_meta=True)
+    for obj in objects:
+        if obj.object_name[-1] == '_':
+            file_path = obj.object_name[:-2]
+            file = File.objects(path=file_path).first()
+        else:
+            file = File.objects(path=obj.object_name).first()
+
+        if file:
+            shared_file = SharedFile.objects(file=file, user=child_user).first()
+            if shared_file is None:
+                shared_file = SharedFile(file=file, user=child_user, permission=permission,
+                                                 explicit=False).save()
+            else:
+                shared_file.permission = permission
+                shared_file.save()
+
+            obj_json.append({
                 'path': shared_file.file.path,
                 'user': shared_file.user.username,
-                'permission': permission
-            }
+                'permission': shared_file.permission.value
+            })
 
-            return jsonify({'message': 'File shared successfully!', 'shared_file': shared_json})
-
-    else:
-        objects = mc.list_objects('data-drive', prefix=data.get('path') + '/', recursive=True, include_user_meta=True)
-        obj_json = []
-        for obj in objects:
-            print(obj.object_name, obj.is_dir, obj.last_modified, obj.etag, obj.size, obj.content_type, obj.metadata)
-
-            if obj.object_name[-1] == '_':
-                path = f"shared/{child_user.username}/{obj.object_name[:-2]}"
-                file_path = obj.object_name[:-2]
-                file = File.objects(path=file_path).first()
-
-            else:
-                path = f"shared/{child_user.username}/{obj.object_name}"
-                file = File.objects(path=obj.object_name).first()
-
-            print("Shared path is", path)
-
-            if file:
-                print("File is", file.path, file.size, file.owner.username, file.is_dir)
-
-                existing_shared_file = SharedFile.objects(file=file, user=child_user).first()
-
-                if existing_shared_file:
-                    existing_shared_file.permission = permission
-                    existing_shared_file.path = path
-                    existing_shared_file.save()
-                else:
-                    shared_file = SharedFile(file=file, user=child_user, permission=permission,
-                                             path=path)
-
-                    if shared_file:
-                        shared_file.save()
-
-                        obj_json.append({
-                            'path': obj.object_name,
-                            'is_dir': obj.is_dir,
-                            'last_modified': obj.last_modified,
-                            'size': obj.size,
-                            'metadata': obj.metadata
-                        })
-
-        return jsonify({'objects_folder': obj_json})
+    return jsonify({'message': 'File shared successfully!', 'shared_files': obj_json})
 
 
 @files_bp.route('/list_shared', methods=['GET'])
@@ -258,25 +233,45 @@ def get_shared():
     Desc: Get all files shared with user
     Params: None
     """
+
     data = request.get_json()
-    prefix = data.get('path')
+    path = data.get('path')
+    user = session.get('user_id')
 
-    user = User.objects(id=session.get('user_id')).first()
-    if not user:
-        return jsonify({'message': 'User does not exist!'}), 400
+    if path is None:
+        explicit_shares = SharedFile.objects(explicit=True, user=user)
 
-    regex = re.compile(f"{prefix}/[^/]*")
-    shared_files = SharedFile.objects(user=user, path=regex)
-    shared_json = []
-    for shared_file in shared_files:
-        shared_json.append({
-            'path': shared_file.path,
-            'user': shared_file.user.username,
-            'permission': shared_file.permission.value
-        })
+        shared_json = []
+        for explicit_share in explicit_shares:
+            shared_json.append({
+                'path': explicit_share.file.path,
+                'permission': explicit_share.permission.value,
+                'is_dir': explicit_share.file.is_dir,
+            })
 
-    return jsonify({'shared_files': shared_json})
+        return jsonify({'shared_files': shared_json})
+    else:
+        shared_json = []
+        file = File.objects(path=path).first()
+        shared_file = SharedFile.objects(file=file, user=user).first()
 
+        if shared_file is None:
+            return jsonify({'message': 'No file shared with user!'}), 400
+        else:
+            if shared_file.file.is_dir:
+                objects = mc.list_objects('data-drive', prefix=path + '/', recursive=False, include_user_meta=True)
+
+                obj_json = []
+                for obj in objects:
+                    obj_json.append({
+                        'path': obj.object_name,
+                        'is_dir': obj.is_dir,
+                        'last_modified': obj.last_modified,
+                        'size': obj.size,
+                        'metadata': obj.metadata,
+                    })
+
+                return jsonify({'shared_objects': obj_json})
 
 @files_bp.route('/clear_shared', methods=['POST'])
 def clear_shared():

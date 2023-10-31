@@ -45,7 +45,7 @@ class SharedFile(db.Document):
     user = db.ReferenceField(User, required=True)
     permission = db.EnumField(Permission, required=True)
 
-    path = db.StringField(required=True)
+    explicit = db.BooleanField(required=True, default=False)
     meta = {
         'indexes': [
             'file',
