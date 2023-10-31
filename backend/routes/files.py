@@ -165,8 +165,9 @@ def share():
     """
     Desc: Shares a given file/dir to another user, updating the user permissions for that file /dir
     Params: 
-        path : string = path of dir or file 
-        parent_user, child_user, is_file
+        path = string
+        child_user = string
+        permission = 'read' | 'write' | 'none'
     """
 
     parent_user = session.get('user_id')
@@ -178,9 +179,9 @@ def share():
     child_user = User.objects(username=data.get('child_user')).first()
     permission = data.get('permission')
 
-    if not child_user:
+    if child_user is None:
         return jsonify({'message': 'Child user does not exist!'}), 400
-    if not permission:
+    if permission is None:
         return jsonify({'message': 'Permission not provided!'}), 400
 
     file = File.objects(path=data.get('path')).first()
@@ -188,6 +189,10 @@ def share():
     if file is None:
         return jsonify({'message': 'File does not exist!'}), 400
     else:
+        parent_user = User.objects(id=parent_user).first()
+        if file.owner != parent_user:
+            return jsonify({'message': 'You do not have permission to share this file!'}), 400
+
         shared_file = SharedFile.objects(file=file, user=child_user).first()
         if shared_file is None:
             shared_file = SharedFile(file=file, user=child_user, permission=permission, explicit=True).save()
@@ -195,11 +200,7 @@ def share():
             shared_file.permission = permission
             shared_file.save()
 
-    obj_json = [{
-        'path': shared_file.file.path,
-        'user': shared_file.user.username,
-        'permission': shared_file.permission.value
-    }]
+    obj_json = []
 
     objects = mc.list_objects('data-drive', prefix=data.get('path') + '/', recursive=True, include_user_meta=True)
     for obj in objects:
@@ -215,8 +216,9 @@ def share():
                 shared_file = SharedFile(file=file, user=child_user, permission=permission,
                                                  explicit=False).save()
             else:
-                shared_file.permission = permission
-                shared_file.save()
+                if permission > shared_file.permission:
+                    shared_file.permission = permission
+                    shared_file.save()
 
             obj_json.append({
                 'path': shared_file.file.path,
@@ -253,6 +255,10 @@ def get_shared():
     else:
         shared_json = []
         file = File.objects(path=path).first()
+
+        if file is None:
+            return jsonify({'message': 'File does not exist!'}), 400
+
         shared_file = SharedFile.objects(file=file, user=user).first()
 
         if shared_file is None:
