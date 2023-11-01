@@ -57,8 +57,12 @@ def login():
 
     # Create session for user
     session['user_id'] = str(user.id)
+    session['username'] = user.username
 
-    return jsonify({'message': 'User logged in successfully!'})
+    return jsonify({
+        'message': 'hello lmao',
+        'username': user.username,
+        })
 
 
 @auth_bp.route('/user', methods=['GET'])
@@ -67,7 +71,7 @@ def user():
     Desc: Test if user is logged in
     Params: None
     """
-    return jsonify({'user': session.get('user_id')})
+    return jsonify({'username': session.get('username')})
 
 
 @auth_bp.route('/logout', methods=['POST'])

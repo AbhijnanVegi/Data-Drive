@@ -15,20 +15,13 @@
     text-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
 }
 
-.chonky-chonkyRoot{
-  font-family: Quicksand !important;
+
+[class*=' Mui'],[class^='Mui'] {
+    font-family: Quicksand !important;
+    font-size: 17px;
 }
 
-.chonky-infoText {
-  font-family: Quicksand !important;
+[class*=' ant'],[class^='ant'] {
+    font-family: Quicksand !important;
 }
 
-.chonky-searchFieldInput {
-  font-family: Quicksand !important;
-  font-size: 55px !important;
-}
-
-.chonky-baseButton {
-  font-family: Quicksand !important;
-  font-size: 55px !important;
-}
