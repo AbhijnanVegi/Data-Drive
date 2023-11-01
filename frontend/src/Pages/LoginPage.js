@@ -31,12 +31,13 @@ const LoginPage = () => {
         console.log(values);
         // disable axios status validation
         axios.defaults.validateStatus = () => true;
-        axios.post('http://localhost:5000/auth/login', values)
+        axios('http://localhost:5000/auth/login', { method: "post", withCredentials: true, data: values })
             .then((response) => {
                 console.log("response")
                 console.log(response)
-                if (response.status === 200)
-                    window.location.href = '/dashboard';
+                if (response.status === 200) {
+                    window.location.href = '/home';
+                }
                 else
                     alert(response.data.message)
             })
@@ -52,7 +53,7 @@ const LoginPage = () => {
             email: values.Signemail,
             password: values.signupPassword,
         }
-        axios.post('http://localhost:5000/auth/register', request)
+        axios('http://localhost:5000/auth/register', { method: "post", withCredentials: true, data: request })
             .then((response) => {
                 console.log("response")
                 console.log(response)

@@ -29,3 +29,7 @@
     margin-bottom: 10px;
     margin-right: 50px;
 }
+
+.ant-tabs-tab-btn,.ant-input, .ant-btn{
+    font-size : 16px !important;
+}
