@@ -1,23 +1,25 @@
 from enum import Enum
+from mongoengine import Document, StringField, IntField, ReferenceField, EnumField
 
-from backend.models.orm import db
 from backend.models.user import User
 
+
 class Permission(Enum):
-    READ = 'read'
-    WRITE = 'write'
-    NONE = 'none'
+    READ = "read"
+    WRITE = "write"
+    NONE = "none"
 
-class File(db.Document):
-    path = db.StringField(required=True, unique=True)
-    size = db.IntField(required=True, default = 0)
-    owner = db.ReferenceField(User, required=True)
 
-    public = db.EnumField(Permission, required=True, default=Permission.NONE)
+class File(Document):
+    path = StringField(required=True, unique=True)
+    size = IntField(required=True, default=0)
+    owner = ReferenceField(User, required=True)
+
+    public = EnumField(Permission, required=True, default=Permission.NONE)
 
     meta = {
-        'indexes': [
-            'path',
+        "indexes": [
+            "path",
         ]
     }
 
@@ -38,14 +40,14 @@ class File(db.Document):
         return self.get_permission(user) in [Permission.WRITE, Permission.READ]
 
 
-class SharedFile(db.Document):
-    file = db.ReferenceField(File, required=True)
-    user = db.ReferenceField(User, required=True)
-    permission = db.EnumField(Permission, required=True)
+class SharedFile(Document):
+    file = ReferenceField(File, required=True)
+    user = ReferenceField(User, required=True)
+    permission = EnumField(Permission, required=True)
 
     meta = {
-        'indexes': [
-            'file',
-            'user',
+        "indexes": [
+            "file",
+            "user",
         ]
     }

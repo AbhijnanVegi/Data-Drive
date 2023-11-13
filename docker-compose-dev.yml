@@ -4,7 +4,7 @@ services:
   minio:
     image: minio/minio
     volumes:
-      - ./minio-data:/data
+      - minio-data:/data
     ports:
       - "9000:9000"
       - "9090:9090"
@@ -16,6 +16,10 @@ services:
   mongodb:
     image: mongo
     volumes:
-      - ./mongo-data:/data/db
+      - mongo-data:/data/db
     ports:
       - "27017:27017"
+
+volumes:
+  minio-data:
+  mongo-data:
