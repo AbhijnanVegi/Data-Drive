@@ -36,7 +36,7 @@ def register(data: Annotated[RegisterForm, Body(embed=True)]):
     user = User(username=username, email=email, password=data.password).save()
 
     # Create home directory for user
-    File(path=username, size=0, owner=user).save()
+    File(path=username, size=0, owner=user, is_dir=True).save()
     return {"message": "User registered successfully!"}
 
 

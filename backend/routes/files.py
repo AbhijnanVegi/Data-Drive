@@ -7,6 +7,7 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, Form
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from minio.deleteobjects import DeleteObject
 
 from backend.dependencies import get_auth_user, get_auth_user_optional, MessageResponse
 from backend.models.user import User
@@ -94,7 +95,6 @@ def mkdir(
         return {"message": "Directory already exists!"}
 
     parent = File.objects(path=os.path.dirname(data.path)).first()
-    print(os.path.dirname(data.path))
     if not parent:
         return {"message": "Parent directory does not exist!"}
 
@@ -102,7 +102,7 @@ def mkdir(
     if not parent.can_write(user):
         return {"message": "You do not have permission to create a directory here!"}
 
-    directory = File(path=data.path, owner=user).save()
+    directory = File(path=data.path, owner=user, is_dir=True).save()
     mc.put_object("data-drive", data.path + "/_", io.BytesIO(b""), 0)
     return {"message": "Directory created successfully!"}
 
@@ -113,7 +113,7 @@ def list(
     username: Annotated[str, Depends(get_auth_user_optional)],
 ):
     directory = File.objects(path=data.path).first()
-    if not directory:
+    if not directory or not directory.is_dir:
         raise HTTPException(status_code=400, detail="Directory does not exist!")
 
     if username:
@@ -140,12 +140,59 @@ def list(
 
     return objJSON
 
+@files_router.post("/delete", response_model=MessageResponse)
+def delete(
+    data: Annotated[PathForm, Body(embed=True)],
+    username: Annotated[str, Depends(get_auth_user)],
+):
+    file = File.objects(path=data.path).first()
+    if not file:
+        raise HTTPException(status_code=400, detail="File does not exist!")
+
+    is_dir = file.is_dir
+    if is_dir:
+        if file.path == username:
+            raise HTTPException(
+                status_code=400, detail="You cannot delete your home directory!"
+            )
+
+    user = User.objects(username=username).first()
+    if not file.can_write(user):
+        raise HTTPException(
+            status_code=400, detail="You do not have permission to delete this file/folder!"
+        )
+
+    if is_dir:
+        mc.remove_object("data-drive", data.path + "/_")
+        delete_object_list = map(
+            lambda x: DeleteObject(x.object_name),
+            mc.list_objects("data-drive", data.path, recursive=True),
+        )
+        errors = mc.remove_objects("data-drive", delete_object_list)
+        # delete shared file objects associated with files in the directory
+        for file in File.objects(path__startswith=data.path):
+            SharedFile.objects(file=file).delete()
+            file.delete()
+            
+        for error in errors:
+            print("Error occurred when deleting " + error.object_name)
+        return {"message": "Folder deleted successfully!"}
+    else:
+        mc.remove_object("data-drive", data.path)
+        SharedFile.objects(file=file).delete()
+        file.delete()
+        return {"message": "File deleted successfully!"}
+
+
 
 @files_router.get("/get/<path:path>", response_class=FileResponse)
 def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)]):
     file = File.objects(path=path).first()
     if not file:
         raise HTTPException(status_code=400, detail="File does not exist!")
+    
+    if file.is_dir:
+        raise HTTPException(status_code=400, detail="Cannot preview a directory!")
 
     user = None
     if username:

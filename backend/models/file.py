@@ -1,5 +1,5 @@
 from enum import Enum
-from mongoengine import Document, StringField, IntField, ReferenceField, EnumField
+from mongoengine import Document, StringField, IntField, ReferenceField, EnumField, BooleanField, BooleanField
 
 from backend.models.user import User
 
@@ -14,6 +14,7 @@ class File(Document):
     path = StringField(required=True, unique=True)
     size = IntField(required=True, default=0)
     owner = ReferenceField(User, required=True)
+    is_dir = BooleanField(required=True, default=False)
 
     public = EnumField(Permission, required=True, default=Permission.NONE)
 
