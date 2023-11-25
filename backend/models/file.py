@@ -45,10 +45,13 @@ class SharedFile(Document):
     file = ReferenceField(File, required=True)
     user = ReferenceField(User, required=True)
     permission = EnumField(Permission, required=True)
+    explicit = BooleanField(required=True, default=False)
+    owner = ReferenceField(User, required=True)
 
     meta = {
         "indexes": [
             "file",
             "user",
+            "owner",
         ]
     }
