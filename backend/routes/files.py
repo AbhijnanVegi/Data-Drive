@@ -1,19 +1,31 @@
 import os
 import mimetypes
 import io
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 from typing import Annotated, List
 
-from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, Form
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Body,
+    UploadFile,
+    Form,
+    BackgroundTasks,
+)
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from minio.deleteobjects import DeleteObject
 
+from backend.config import MAX_PREVIEW_SIZE, MIN_BANDWIDTH
 from backend.dependencies import get_auth_user, get_auth_user_optional, MessageResponse
 from backend.models.user import User
 from backend.models.file import File, SharedFile
+from backend.models.job import Job, Status
 
 from backend.storage.client import minio_client as mc
+from backend.tasks.files import create_job
 
 files_router = APIRouter(
     prefix="",
@@ -140,6 +152,7 @@ def list(
 
     return objJSON
 
+
 @files_router.post("/delete", response_model=MessageResponse)
 def delete(
     data: Annotated[PathForm, Body(embed=True)],
@@ -159,7 +172,8 @@ def delete(
     user = User.objects(username=username).first()
     if not file.can_write(user):
         raise HTTPException(
-            status_code=400, detail="You do not have permission to delete this file/folder!"
+            status_code=400,
+            detail="You do not have permission to delete this file/folder!",
         )
 
     if is_dir:
@@ -173,7 +187,7 @@ def delete(
         for file in File.objects(path__startswith=data.path):
             SharedFile.objects(file=file).delete()
             file.delete()
-            
+
         for error in errors:
             print("Error occurred when deleting " + error.object_name)
         return {"message": "Folder deleted successfully!"}
@@ -184,15 +198,18 @@ def delete(
         return {"message": "File deleted successfully!"}
 
 
-
-@files_router.get("/get/<path:path>", response_class=FileResponse)
+@files_router.get("/get/{path:path}", response_class=FileResponse)
 def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)]):
+    print(path)
     file = File.objects(path=path).first()
     if not file:
         raise HTTPException(status_code=400, detail="File does not exist!")
-    
+
     if file.is_dir:
         raise HTTPException(status_code=400, detail="Cannot preview a directory!")
+
+    if file.size > MAX_PREVIEW_SIZE:
+        raise HTTPException(status_code=400, detail="File too large to preview!")
 
     user = None
     if username:
@@ -209,22 +226,62 @@ def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)
         raise HTTPException(status_code=400, detail=str(err))
 
 
-# @files_router.get("/download/<path:path>")
-# def download_file(path):
-#     """
-#     Desc: Download file from storage
-#     Params: path = string
-#     """
-#     file = File.objects(path=path).first()
-#     if not file:
-#         raise HTTPException(status_code=400, detail="File does not exist!")
+class TokenResponse(BaseModel):
+    token: str
 
-#     user = User.objects(id=session.get("user_id")).first()
-#     if not file.can_read(user):
-#         raise HTTPException(status_code=400, detail="You do not have permission to access this file!")
 
-#     try:
-#         mc.fget_object("data-drive", path, "/tmp/" + path)
-#         return send_file("/tmp/" + path, as_attachment=True)
-#     except Exception as err:
-#         raise HTTPException(status_code=400, detail=str(err))
+@files_router.get("/token/{path:path}", response_model=TokenResponse)
+def download_file(
+    path: str,
+    username: Annotated[str, Depends(get_auth_user_optional)],
+    background_tasks: BackgroundTasks,
+):
+    file = File.objects(path=path).first()
+    if not file:
+        raise HTTPException(status_code=400, detail="File does not exist!")
+
+    user = User.objects(username=username).first()
+    if not file.can_read(user):
+        raise HTTPException(
+            status_code=400, detail="You do not have permission to access this file!"
+        )
+
+    # generate a token for download
+    token = secrets.token_urlsafe(32)
+    if file.is_dir:
+        files = File.objects(path__startswith=path + '/')
+        background_tasks.add_task(create_job, token, files, username, path)
+    else:
+        background_tasks.add_task(create_job, token, [file], username, None)
+
+    return {"token": token}
+
+
+class StatusResponse(BaseModel):
+    status: str
+    progress: int
+
+
+@files_router.get("/status/{token}", response_model=StatusResponse)
+def token_status(token: str):
+    job = Job.objects(token=token).first()
+    if not job:
+        raise HTTPException(status_code=400, detail="Job does not exist!")
+
+    return {"status": job.status.value, "progress": job.progress}
+
+
+@files_router.get("/download/{token}", response_class=FileResponse)
+def download(token: str):
+    job = Job.objects(token=token).first()
+    if not job or job.expired:
+        raise HTTPException(status_code=400, detail="Job does not exist!")
+
+    if job.status != Status.DONE:
+        raise HTTPException(status_code=400, detail="Job not done yet!")
+
+    job.expired = True
+    job.exp_time = datetime.now() + timedelta(minutes=job.size / (60 * MIN_BANDWIDTH))
+    job.save()
+
+    return job.download_path

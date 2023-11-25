@@ -1,5 +1,13 @@
 from enum import Enum
-from mongoengine import Document, StringField, IntField, ReferenceField, EnumField, BooleanField, BooleanField
+from mongoengine import (
+    Document,
+    StringField,
+    IntField,
+    ReferenceField,
+    EnumField,
+    BooleanField,
+    BooleanField,
+)
 
 from backend.models.user import User
 
