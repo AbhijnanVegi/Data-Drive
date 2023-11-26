@@ -6,10 +6,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr
 
-from backend.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
-from backend.dependencies import oauth2_scheme, get_auth_user, MessageResponse
-from backend.models.user import User
-from backend.models.file import File
+from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from dependencies import oauth2_scheme, get_auth_user, MessageResponse
+from models.user import User
+from models.file import File
 
 auth_router = APIRouter(
     prefix="/auth",

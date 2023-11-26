@@ -1,6 +1,6 @@
 from minio import Minio
 
-from backend.config import MINIO_CONFIG
+from config import MINIO_CONFIG
 
 minio_client = Minio(
     MINIO_CONFIG["host"],

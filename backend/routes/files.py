@@ -18,14 +18,14 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from minio.deleteobjects import DeleteObject
 
-from backend.config import MAX_PREVIEW_SIZE, MIN_BANDWIDTH
-from backend.dependencies import get_auth_user, get_auth_user_optional, MessageResponse
-from backend.models.user import User
-from backend.models.file import File, SharedFile
-from backend.models.job import Job, Status
+from config import MAX_PREVIEW_SIZE, MIN_BANDWIDTH
+from dependencies import get_auth_user, get_auth_user_optional, MessageResponse
+from models.user import User
+from models.file import File, SharedFile
+from models.job import Job, Status
 
-from backend.storage.client import minio_client as mc
-from backend.tasks.files import create_job
+from storage.client import minio_client as mc
+from tasks.files import create_job
 
 files_router = APIRouter(
     prefix="",

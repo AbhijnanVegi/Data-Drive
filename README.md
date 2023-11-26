@@ -18,7 +18,7 @@ Ensure that you have fastapi installed and run this from the root directory of t
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn backend.app:app --reload
+uvicorn app:app --reload
 ```
 
 ### Frontend

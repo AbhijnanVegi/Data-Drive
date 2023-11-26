@@ -6,10 +6,10 @@ from fastapi import BackgroundTasks
 from typing import Optional, List
 from datetime import datetime, timedelta
 
-from backend.models.file import File
-from backend.models.job import Job, Status
-from backend.storage.client import minio_client as mc
-from backend.config import MIN_BANDWIDTH
+from models.file import File
+from models.job import Job, Status
+from storage.client import minio_client as mc
+from config import MIN_BANDWIDTH
 
 
 def create_job(token: str, files: List[File], username=None, prefix=None):

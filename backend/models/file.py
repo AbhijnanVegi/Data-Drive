@@ -9,7 +9,7 @@ from mongoengine import (
     BooleanField,
 )
 
-from backend.models.user import User
+from models.user import User
 
 
 class Permission(Enum):

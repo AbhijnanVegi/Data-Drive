@@ -1,11 +1,11 @@
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.config import MONGO_CONFIG
-from backend.models.orm import init_db, disconnect_db
+from config import MONGO_CONFIG
+from models.orm import init_db, disconnect_db
 
-from backend.routes.auth import auth_router
-from backend.routes.files import files_router
+from routes.auth import auth_router
+from routes.files import files_router
 
 app = FastAPI()
 
