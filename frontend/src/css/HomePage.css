@@ -1,3 +1,12 @@
+:root {
+  --background-color: white;
+  --text-color: black;
+}
+
+[data-theme="dark"] {
+  --background-color: black;
+  --text-color: white;
+}
 .full-page {
     height: 100vh;
     width: 100vw;
@@ -18,6 +27,10 @@
     background-size: cover !important;
 }
 
+.chonky-chonkyRoot{
+  border-radius: 0px !important;
+}
+
 
 [class*=' Mui'],[class^='Mui'] {
     font-family: Quicksand !important;
@@ -33,7 +46,7 @@
 }
 
 .carousel-div{
-  height: 100vh;
+  height: 500px;
   width: 100vw;
   display: flex;
   justify-content: center;
@@ -45,4 +58,31 @@
   font-weight: bold;
   color: #000;
   text-align: center;
+}
+
+.theme-toggle-button {
+  background-color: transparent;
+  border: none;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  color: var(--text-color);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .theme-toggle-button {
+  color: var(--text-color);
+}
+
+.theme-toggle-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+.footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  height: 5vh;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 1em;
 }

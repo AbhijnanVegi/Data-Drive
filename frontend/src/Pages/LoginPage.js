@@ -31,10 +31,24 @@ const LoginPage = () => {
         console.log(values);
         // disable axios status validation
         axios.defaults.validateStatus = () => true;
-        axios('http://localhost:5000/auth/login', { method: "post", withCredentials: true, data: values })
+
+        let formData = new FormData();
+
+        for (let key in values){
+            formData.append(key, values[key]);
+        }
+        axios('http://localhost:8000/auth/login', { 
+            method: "post", 
+            withCredentials: true, 
+            data: formData,
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            } 
+        })
             .then((response) => {
                 console.log("response")
-                console.log(response)
+                console.log(response.data.access_token)
+                localStorage.setItem('token', response.data.access_token);
                 if (response.status === 200) {
                     window.location.href = '/home';
                 }
@@ -49,11 +63,13 @@ const LoginPage = () => {
     const handleSignupSubmit = async (values) => {
         axios.defaults.validateStatus = () => true;
         const request = {
-            username: values.username,
-            email: values.Signemail,
-            password: values.signupPassword,
+            "data": {
+                "username": values.username,
+                "email": values.Signemail,
+                "password": values.signupPassword
+            }
         }
-        axios('http://localhost:5000/auth/register', { method: "post", withCredentials: true, data: request })
+        axios('http://localhost:8000/auth/register', { method: "post", withCredentials: true, data: request })
             .then((response) => {
                 console.log("response")
                 console.log(response)
@@ -170,12 +186,10 @@ const LoginPage = () => {
                         <TabPane tab="Login" key="login">
                             <Form name="login-form" onFinish={handleLoginSubmit}>
                                 <Form.Item
-                                    name="email"
-                                    rules={[{ required: true, message: 'Please enter your email!' },
-                                    { type: 'email', message: 'Please enter a valid email address!' },
-                                    ]}
+                                    name="username"
+                                    rules={[{ required: true, message: 'Please enter your username!' }]}
                                 >
-                                    <Input placeholder="Email" />
+                                    <Input placeholder="Username" />
                                 </Form.Item>
                                 <Form.Item
                                     name="password"
@@ -190,7 +204,6 @@ const LoginPage = () => {
                                             );
                                         },
                                     },
-
                                     ]}
                                 >
                                     <Input.Password placeholder="Password" />
