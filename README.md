@@ -12,13 +12,13 @@ Ensure that you have docker installed
 docker-compose -f docker-compose-dev.yml up
 ```
 
-Ensure that you have flask installed
+Ensure that you have fastapi installed and run this from the root directory of the project
 
 ```
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-flask run
+uvicorn backend.app:app --reload
 ```
 
 ### Frontend
