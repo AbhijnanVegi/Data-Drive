@@ -1,4 +1,4 @@
-from mongoengine import Document, EmailField, StringField
+from mongoengine import Document, EmailField, StringField, DateTimeField
 
 
 class User(Document):
@@ -12,3 +12,8 @@ class User(Document):
             "username",
         ]
     }
+
+
+class InvalidToken(Document):
+    token = StringField(required=True, unique=True)
+    exp = DateTimeField(required=True)
