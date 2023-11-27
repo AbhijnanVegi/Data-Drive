@@ -47,3 +47,4 @@ def get_auth_user_optional(token: Annotated[str, Depends(oauth2_scheme)]):
 
 class MessageResponse(BaseModel):
     message: str
+
