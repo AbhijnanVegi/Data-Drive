@@ -259,7 +259,7 @@ def share(
         shared_file = SharedFile.objects(file=file, user=child_usr).first()
 
         if shared_file is None:
-            SharedFile(file=file, user=child_usr, permission=perm, explicit=True).save()
+            SharedFile(file=file, user=child_usr, permission=perm, owner=parent_usr, explicit=True).save()
         else:
             shared_file.permission = perm
             shared_file.save()
