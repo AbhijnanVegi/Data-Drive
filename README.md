@@ -6,13 +6,13 @@ A cloud file storage/ hosting platform for data foundation systems.
 
 ### Backend
 
-Ensure that you have docker installed
+Ensure that you have Docker installed
 
 ```
 docker-compose -f docker-compose-dev.yml up
 ```
 
-Ensure that you have fastapi installed and run this from the root directory of the project
+Ensure that you have fast API installed and run this from the backend
 
 ```
 python3 -m venv .venv
