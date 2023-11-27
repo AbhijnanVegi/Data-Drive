@@ -1,13 +1,6 @@
 import axios from "axios";
-const token = localStorage.getItem('token');
+import api from "./api";
 
-// Create an axios instance
-const api = axios.create({
-    baseURL: 'http://localhost:8000', // Changed API endpoint
-    headers: {
-        Authorization: `Bearer ${token}`, // Use Bearer token for authentication
-    },
-});
 const handleFileUpload = async (uploadFile, path) => {
     // get the selected file from the input
     const file = uploadFile[0];
