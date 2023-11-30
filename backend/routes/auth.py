@@ -6,7 +6,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr
 
-from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from config import (
+    SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    DEFAULT_USER_QUOTA,
+)
 from dependencies import oauth2_scheme, get_auth_user, MessageResponse
 from models.user import User
 from models.file import File
@@ -33,7 +38,12 @@ def register(data: Annotated[RegisterForm, Body(embed=True)]):
     if User.objects(email=email).first() or User.objects(username=username).first():
         raise HTTPException(status_code=400, detail="User already exists")
 
-    user = User(username=username, email=email, password=data.password).save()
+    user = User(
+        username=username,
+        email=email,
+        password=data.password,
+        storage_quota=DEFAULT_USER_QUOTA,
+    ).save()
 
     # Create home directory for user
     File(path=username, size=0, owner=user, is_dir=True).save()
@@ -64,6 +74,7 @@ def login(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     access_token = jwt.encode(
         {
             "username": str(user.username),
+            "admin": user.admin,
             "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         },
         SECRET_KEY,
@@ -73,33 +84,30 @@ def login(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("username")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    return username
-
-
 class UserSession(BaseModel):
     username: str | None
+    admin: bool | None
+    permission: int | None
+    storage_quota: int | None
+    storage_used: int | None
 
 
 @auth_router.get("/user", response_model=UserSession)
 def user(username: Annotated[UserSession, Depends(get_auth_user)]):
-    return {"username": username}
+    user = User.objects(username=username).first()
+    return {
+        "username": username,
+        "admin": user.admin,
+        "permission": user.permission.value,
+        "storage_quota": user.storage_quota,
+        "storage_used": user.storage_used,
+    }
+
 
 class UserOut(BaseModel):
     username: str
     email: EmailStr
+
 
 @auth_router.get("/users", response_model=List[UserOut])
 def get_all_users():

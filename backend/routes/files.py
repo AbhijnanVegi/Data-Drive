@@ -23,7 +23,7 @@ from config import MAX_PREVIEW_SIZE, MIN_BANDWIDTH
 from dependencies import get_auth_user, get_auth_user_optional, MessageResponse
 from models.user import User
 from models.file import File, SharedFile
-from models.file import Permission
+from models.common import Permission
 from models.job import Job, Status
 
 from storage.client import minio_client as mc
@@ -61,9 +61,9 @@ class SharedFileModel(BaseModel):
 
 @files_router.post("/upload", response_model=MessageResponse)
 async def upload_file(
-        path: Annotated[str, Form()],
-        file: UploadFile,
-        username: Annotated[str, Depends(get_auth_user)],
+    path: Annotated[str, Form()],
+    file: UploadFile,
+    username: Annotated[str, Depends(get_auth_user)],
 ):
     fileObj = File.objects(path=path).first()
     if fileObj:
@@ -81,11 +81,12 @@ async def upload_file(
     if content_type is None:
         content_type = "application/octet-stream"
 
+    # Get quota user
+    quota_user = User.objects(username=path.split("/")[0]).first()
+    if user.storage_used + file.size > user.storage_quota:
+        return {"message": "User storage quota exceeded!"}
+
     try:
-        # mc.fput_object(
-        # "data-drive", data.path, "/tmp/" + secure_filename(data.path), content_type
-        # )
-        # mc.fput_object('data-drive', path, file.file.fileno(), content_type)
         mc.put_object(
             "data-drive", path, file.file, -1, content_type, part_size=10 * 1024 * 1024
         )
@@ -98,11 +99,14 @@ async def upload_file(
             public=directory.public,
         ).save()
 
+        # Update user storage used
+        quota_user.storage_used += file.size
+        quota_user.save()
+
         # Inherit permissions from parent directory
         shares = SharedFile.objects(file=directory)
         for share in shares:
-            SharedFile(file=file, user=share.user,
-                       permission=share.permission).save()
+            SharedFile(file=file, user=share.user, permission=share.permission).save()
 
         return {"message": "File uploaded successfully!"}
 
@@ -113,8 +117,8 @@ async def upload_file(
 
 @files_router.post("/mkdir", response_model=MessageResponse)
 def mkdir(
-        data: Annotated[PathForm, Body(embed=True)],
-        username: Annotated[str, Depends(get_auth_user)],
+    data: Annotated[PathForm, Body(embed=True)],
+    username: Annotated[str, Depends(get_auth_user)],
 ):
     directory = File.objects(path=data.path).first()
     if directory:
@@ -135,13 +139,12 @@ def mkdir(
 
 @files_router.post("/list", response_model=List[ObjectModel])
 def list(
-        data: Annotated[PathForm, Body(embed=True)],
-        username: Annotated[str, Depends(get_auth_user_optional)],
+    data: Annotated[PathForm, Body(embed=True)],
+    username: Annotated[str, Depends(get_auth_user_optional)],
 ):
     directory = File.objects(path=data.path).first()
     if not directory or not directory.is_dir:
-        raise HTTPException(
-            status_code=400, detail="Directory does not exist!")
+        raise HTTPException(status_code=400, detail="Directory does not exist!")
 
     if username:
         user = User.objects(username=username).first()
@@ -168,10 +171,36 @@ def list(
     return objJSON
 
 
+class DuResponse(BaseModel):
+    size: int
+
+
+@files_router.get("/du/<path:path>", response_model=DuResponse)
+def du(
+    path: str,
+    username: Annotated[str, Depends(get_auth_user_optional)],
+):
+    directory = File.objects(path=path).first()
+    if not directory or not directory.is_dir:
+        raise HTTPException(status_code=400, detail="Directory does not exist!")
+
+    if username:
+        user = User.objects(username=username).first()
+    else:
+        user = None
+    if not directory.can_read(user):
+        raise HTTPException(
+            status_code=400,
+            detail="You do not have permission to access this directory!",
+        )
+
+    return {"size": directory.get_size()}
+
+
 @files_router.post("/delete", response_model=MessageResponse)
 def delete(
-        data: Annotated[PathForm, Body(embed=True)],
-        username: Annotated[str, Depends(get_auth_user)],
+    data: Annotated[PathForm, Body(embed=True)],
+    username: Annotated[str, Depends(get_auth_user)],
 ):
     file = File.objects(path=data.path).first()
     if not file:
@@ -187,7 +216,8 @@ def delete(
     user = User.objects(username=username).first()
     if not file.can_write(user):
         raise HTTPException(
-            status_code=400, detail="You do not have permission to delete this file/folder!"
+            status_code=400,
+            detail="You do not have permission to delete this file/folder!",
         )
 
     if is_dir:
@@ -218,8 +248,7 @@ def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)
         raise HTTPException(status_code=400, detail="File does not exist!")
 
     if file.is_dir:
-        raise HTTPException(
-            status_code=400, detail="Cannot preview a directory!")
+        raise HTTPException(status_code=400, detail="Cannot preview a directory!")
 
     user = None
     if username:
@@ -238,12 +267,11 @@ def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)
 
 @files_router.post("/share", response_model=MessageResponse)
 def share(
-        path: Annotated[str, Body(embed=True)],
-        parent_username: Annotated[str, Depends(get_auth_user)],
-        child_username: Annotated[str, Body(embed=True)],
-        perm: Annotated[Permission, Body(embed=True)] = Permission.READ,
+    path: Annotated[str, Body(embed=True)],
+    parent_username: Annotated[str, Depends(get_auth_user)],
+    child_username: Annotated[str, Body(embed=True)],
+    perm: Annotated[Permission, Body(embed=True)] = Permission.READ,
 ):
-
     file = File.objects(path=path).first()
 
     shared_list = []
@@ -255,16 +283,23 @@ def share(
         child_usr = User.objects(username=child_username).first()
         if parent_usr == child_usr:
             raise HTTPException(
-                status_code=400, detail="You cannot share with yourself!")
+                status_code=400, detail="You cannot share with yourself!"
+            )
         if file.owner != parent_usr:
             raise HTTPException(
-                status_code=400, detail="You do not have permission to share this file!")
+                status_code=400, detail="You do not have permission to share this file!"
+            )
 
         shared_file = SharedFile.objects(file=file, user=child_usr).first()
 
         if shared_file is None:
-            SharedFile(file=file, user=child_usr, permission=perm,
-                       owner=parent_usr, explicit=True).save()
+            SharedFile(
+                file=file,
+                user=child_usr,
+                permission=perm,
+                owner=parent_usr,
+                explicit=True,
+            ).save()
         else:
             shared_file.permission = perm
             shared_file.save()
@@ -272,7 +307,7 @@ def share(
         shared_list.append(shared_file)
 
     for obj in mc.list_objects("data-drive", prefix=path + "/", recursive=True):
-        if obj.object_name[-1] == '_':
+        if obj.object_name[-1] == "_":
             file_path = obj.object_name[:-2]
             file = File.objects(path=file_path).first()
         else:
@@ -286,8 +321,9 @@ def share(
                     shared_file.permission = perm
                     shared_file.save()
             else:
-                SharedFile(file=file, user=child_usr,
-                           permission=perm, explicit=False).save()
+                SharedFile(
+                    file=file, user=child_usr, permission=perm, explicit=False
+                ).save()
 
             shared_list.append(shared_file)
 
@@ -296,8 +332,8 @@ def share(
 
 @files_router.post("/list_shared_with", response_model=List[SharedFileModel])
 def get_shared_with(
-        username: Annotated[str, Depends(get_auth_user_optional)],
-        path: Annotated[str, Body(embed=True)] = None,
+    username: Annotated[str, Depends(get_auth_user_optional)],
+    path: Annotated[str, Body(embed=True)] = None,
 ):
     """
     Desc: List the shared files with the user, in the specified directory,
@@ -334,22 +370,29 @@ def get_shared_with(
             raise HTTPException(status_code=400, detail="File does not exist!")
         else:
             shared_file = SharedFile.objects(
-                user=user, explicit=True, file=file).first()
+                user=user, explicit=True, file=file
+            ).first()
 
             if shared_file:
                 if shared_file.file.is_dir:
-                    for obj in mc.list_objects("data-drive", prefix=path + "/", recursive=False):
-                        if obj.object_name[-1] == '_':
+                    for obj in mc.list_objects(
+                        "data-drive", prefix=path + "/", recursive=False
+                    ):
+                        if obj.object_name[-1] == "_":
                             continue
 
                         if obj.is_dir:
                             print(obj.object_name)
-                            _shared_file = SharedFile.objects(user=user, file=File.objects(
-                                path=obj.object_name[:-1]).first()).first()
+                            _shared_file = SharedFile.objects(
+                                user=user,
+                                file=File.objects(path=obj.object_name[:-1]).first(),
+                            ).first()
                         else:
                             print(obj.object_name)
-                            _shared_file = SharedFile.objects(user=user,
-                                                              file=File.objects(path=obj.object_name).first()).first()
+                            _shared_file = SharedFile.objects(
+                                user=user,
+                                file=File.objects(path=obj.object_name).first(),
+                            ).first()
                         shared_list.append(
                             {
                                 "path": obj.object_name,
@@ -380,7 +423,7 @@ def get_shared_with(
 
 @files_router.post("/list_shared_by", response_model=List[SharedFileModel])
 def get_shared_by(
-        username: Annotated[str, Depends(get_auth_user_optional)],
+    username: Annotated[str, Depends(get_auth_user_optional)],
 ):
     """
     Desc: List the explicit shared files by the user.
@@ -412,9 +455,9 @@ def get_shared_by(
 
 @files_router.post("/unshare", response_model=MessageResponse)
 def unshare(
-        path: Annotated[str, Body(embed=True)],
-        child_username: Annotated[str, Body(embed=True)],
-        parent_username: Annotated[str, Depends(get_auth_user)],
+    path: Annotated[str, Body(embed=True)],
+    child_username: Annotated[str, Body(embed=True)],
+    parent_username: Annotated[str, Depends(get_auth_user)],
 ):
     """
     Desc: Unshare the file specified by the path.
@@ -432,13 +475,15 @@ def unshare(
             shared_file.delete()
             return {"message": "File unshared successfully!"}
         else:
-            return {"message": "File is not explicitly shared, delete the parent share first!"}
+            return {
+                "message": "File is not explicitly shared, delete the parent share first!"
+            }
 
 
 @files_router.post("/copy", response_model=MessageResponse)
 def copy(
-        src_path: Annotated[str, Body(embed=True)],
-        dest_path: Annotated[str, Body(embed=True)],
+    src_path: Annotated[str, Body(embed=True)],
+    dest_path: Annotated[str, Body(embed=True)],
 ):
     """
     Desc: Move the file specified by the path.
@@ -449,34 +494,62 @@ def copy(
     parent_path = os.path.dirname(src_path)
 
     if src_file is None:
-        raise HTTPException(status_code=400, detail="Source file/folder does not exist!")
+        raise HTTPException(
+            status_code=400, detail="Source file/folder does not exist!"
+        )
 
     if dest_file is None:
-        raise HTTPException(status_code=400, detail="Destination folder does not exist!")
+        raise HTTPException(
+            status_code=400, detail="Destination folder does not exist!"
+        )
     elif not dest_file.is_dir:
         raise HTTPException(status_code=400, detail="Destination is not a directory!")
 
+    quota_user = User.objects(username=dest_path.split("/")[0]).first()
+    copy_size = src_file.get_size()
+    if quota_user.storage_used + copy_size > quota_user.storage_quota:
+        raise HTTPException(status_code=400, detail="User storage quota exceeded!")
+
     if src_file.is_dir:
         for obj in mc.list_objects("data-drive", prefix=src_path + "/", recursive=True):
-            mc.copy_object("data-drive", dest_path + obj.object_name[len(parent_path):],
-                           minio.commonconfig.CopySource("data-drive", obj.object_name))
+            mc.copy_object(
+                "data-drive",
+                dest_path + obj.object_name[len(parent_path) :],
+                minio.commonconfig.CopySource("data-drive", obj.object_name),
+            )
 
         for file in File.objects(path__startswith=src_path):
-            File(path=dest_path + file.path[len(parent_path):], size=file.size, owner=file.owner, public=file.public,
-                 is_dir=file.is_dir).save()
+            File(
+                path=dest_path + file.path[len(parent_path) :],
+                size=file.size,
+                owner=file.owner,
+                public=file.public,
+                is_dir=file.is_dir,
+            ).save()
     else:
-        mc.copy_object("data-drive", dest_path + src_path[len(src_path):],
-                       minio.commonconfig.CopySource("data-drive", src_path))
-        File(path=dest_path + src_file.path[len(parent_path):], size=src_file.size, owner=src_file.owner,
-             public=src_file.public, is_dir=src_file.is_dir).save()
+        mc.copy_object(
+            "data-drive",
+            dest_path + src_path[len(src_path) :],
+            minio.commonconfig.CopySource("data-drive", src_path),
+        )
+        File(
+            path=dest_path + src_file.path[len(parent_path) :],
+            size=src_file.size,
+            owner=src_file.owner,
+            public=src_file.public,
+            is_dir=src_file.is_dir,
+        ).save()
+
+    quota_user.storage_used += copy_size
+    quota_user.save()
 
     return {"message": "File/folder copied successfully!"}
 
 
 @files_router.post("/move", response_model=MessageResponse)
 def move(
-        src_path: Annotated[str, Body(embed=True)],
-        dest_path: Annotated[str, Body(embed=True)],
+    src_path: Annotated[str, Body(embed=True)],
+    dest_path: Annotated[str, Body(embed=True)],
 ):
     """
     Desc: Move the file specified by the path.
@@ -490,18 +563,25 @@ def move(
     parent_path = os.path.dirname(src_path)
 
     if src_file is None:
-        raise HTTPException(status_code=400, detail="Source file/folder does not exist!")
+        raise HTTPException(
+            status_code=400, detail="Source file/folder does not exist!"
+        )
 
     if dest_file is None:
-        raise HTTPException(status_code=400, detail="Destination folder does not exist!")
+        raise HTTPException(
+            status_code=400, detail="Destination folder does not exist!"
+        )
 
     if not dest_file.is_dir:
         raise HTTPException(status_code=400, detail="Destination is not a directory!")
 
     if src_file.is_dir:
         for obj in mc.list_objects("data-drive", prefix=src_path + "/", recursive=True):
-            mc.copy_object("data-drive", dest_path + obj.object_name[len(parent_path):],
-                           minio.commonconfig.CopySource("data-drive", obj.object_name))
+            mc.copy_object(
+                "data-drive",
+                dest_path + obj.object_name[len(parent_path) :],
+                minio.commonconfig.CopySource("data-drive", obj.object_name),
+            )
             mc.remove_object("data-drive", obj.object_name)
 
         to_move_share = File.objects(path=src_path).first()
@@ -513,7 +593,7 @@ def move(
 
         for file in File.objects(path__startswith=src_path):
             shares = SharedFile.objects(file=file)
-            file.path = dest_path + file.path[len(parent_path):]
+            file.path = dest_path + file.path[len(parent_path) :]
             file.save()
             for _share in shares:
                 if _share.user not in users_to_move_for:
@@ -522,12 +602,15 @@ def move(
         return {"message": "File/folder moved successfully!"}
 
     else:
-        obj = mc.copy_object("data-drive", dest_path + src_path[len(src_path):],
-                             minio.commonconfig.CopySource("data-drive", src_path))
+        obj = mc.copy_object(
+            "data-drive",
+            dest_path + src_path[len(src_path) :],
+            minio.commonconfig.CopySource("data-drive", src_path),
+        )
         mc.remove_object("data-drive", src_path)
 
         to_move_file = File.objects(path=src_path).first()
-        to_move_file.path = dest_path + to_move_file.path[len(parent_path):]
+        to_move_file.path = dest_path + to_move_file.path[len(parent_path) :]
         for _share in SharedFile.objects(file=to_move_file):
             if not _share.explicit:
                 _share.delete()
@@ -541,9 +624,9 @@ class TokenResponse(BaseModel):
 
 @files_router.get("/token/{path:path}", response_model=TokenResponse)
 def download_file(
-        path: str,
-        username: Annotated[str, Depends(get_auth_user_optional)],
-        background_tasks: BackgroundTasks,
+    path: str,
+    username: Annotated[str, Depends(get_auth_user_optional)],
+    background_tasks: BackgroundTasks,
 ):
     file = File.objects(path=path).first()
     if not file:
@@ -558,7 +641,7 @@ def download_file(
     # generate a token for download
     token = secrets.token_urlsafe(32)
     if file.is_dir:
-        files = File.objects(path__startswith=path + '/')
+        files = File.objects(path__startswith=path + "/")
         background_tasks.add_task(create_job, token, files, username, path)
     else:
         background_tasks.add_task(create_job, token, [file], username, None)

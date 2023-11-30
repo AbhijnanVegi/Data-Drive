@@ -1,4 +1,3 @@
-from enum import Enum
 from mongoengine import (
     Document,
     StringField,
@@ -9,13 +8,8 @@ from mongoengine import (
     BooleanField,
 )
 
+from models.common import Permission
 from models.user import User
-
-
-class Permission(Enum):
-    READ = "read"
-    WRITE = "write"
-    NONE = "none"
 
 
 class File(Document):
@@ -34,7 +28,7 @@ class File(Document):
 
     def get_permission(self, user):
         if self.owner == user:
-            return Permission.WRITE
+            return min(Permission.WRITE, user.permission)
 
         shared_file = SharedFile.objects(file=self, user=user).first()
         if shared_file:
@@ -47,6 +41,18 @@ class File(Document):
 
     def can_read(self, user):
         return self.get_permission(user) in [Permission.WRITE, Permission.READ]
+
+    def get_size(self):
+        if not self.is_dir:
+            return self.size
+
+        pipeline = [
+            {"$match": {"path": {"$regex": f"^{self.path}/"}}},
+            {"$group": {"_id": None, "size": {"$sum": "$size"}}},
+        ]
+
+        result = File.objects.aggregate(*pipeline)
+        return result.next()["size"]
 
 
 class SharedFile(Document):

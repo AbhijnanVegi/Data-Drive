@@ -36,12 +36,11 @@ def create_job(token: str, files: List[File], username=None, prefix=None):
 
     if len(files) > 1:
         directory = pathlib.Path(f"/tmp/{folder_name}")
-        with zipfile.ZipFile(f"/tmp/{os.path.basename(prefix)}.zip", mode="w") as archive:
+        with zipfile.ZipFile(
+            f"/tmp/{os.path.basename(prefix)}.zip", mode="w"
+        ) as archive:
             for file_path in directory.rglob("*"):
-                archive.write(
-                    file_path,
-                    arcname=file_path.relative_to(directory)
-                )
+                archive.write(file_path, arcname=file_path.relative_to(directory))
         job.download_path = f"/tmp/{os.path.basename(prefix)}.zip"
     else:
         job.download_path = f"/tmp/{folder_name}/{os.path.basename(files[0].path)}"
