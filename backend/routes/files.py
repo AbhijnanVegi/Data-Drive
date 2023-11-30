@@ -100,8 +100,8 @@ async def upload_file(
         # Inherit permissions from parent directory
         shares = SharedFile.objects(file=directory)
         for share in shares:
-            SharedFile(file=file, user=share.user, permission=share.permission,
-                       path=f"shared/{share.user.username}/" + file.path).save()
+            SharedFile(file=file, user=share.user,
+                       permission=share.permission).save()
 
         return {"message": "File uploaded successfully!"}
 
@@ -139,7 +139,8 @@ def list(
 ):
     directory = File.objects(path=data.path).first()
     if not directory or not directory.is_dir:
-        raise HTTPException(status_code=400, detail="Directory does not exist!")
+        raise HTTPException(
+            status_code=400, detail="Directory does not exist!")
 
     if username:
         user = User.objects(username=username).first()
@@ -199,7 +200,6 @@ def delete(
         for file in File.objects(path__startswith=data.path):
             SharedFile.objects(file=file).delete()
             file.delete()
-            
         for error in errors:
             print("Error occurred when deleting " + error.object_name)
         return {"message": "Folder deleted successfully!"}
@@ -210,15 +210,15 @@ def delete(
         return {"message": "File deleted successfully!"}
 
 
-
 @files_router.get("/get/<path:path>", response_class=FileResponse)
 def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)]):
     file = File.objects(path=path).first()
     if not file:
         raise HTTPException(status_code=400, detail="File does not exist!")
-    
+
     if file.is_dir:
-        raise HTTPException(status_code=400, detail="Cannot preview a directory!")
+        raise HTTPException(
+            status_code=400, detail="Cannot preview a directory!")
 
     user = None
     if username:
@@ -242,8 +242,6 @@ def share(
         child_username: Annotated[str, Body(embed=True)],
         perm: Annotated[Permission, Body(embed=True)] = Permission.READ,
 ):
-    # if parent_usr == share_usr:
-    #     raise HTTPException(status_code=400, detail="You cannot share with yourself!")
 
     file = File.objects(path=path).first()
 
@@ -254,13 +252,18 @@ def share(
     else:
         parent_usr = User.objects(username=parent_username).first()
         child_usr = User.objects(username=child_username).first()
+        if parent_usr == child_usr:
+            raise HTTPException(
+                status_code=400, detail="You cannot share with yourself!")
         if file.owner != parent_usr:
-            raise HTTPException(status_code=400, detail="You do not have permission to share this file!")
+            raise HTTPException(
+                status_code=400, detail="You do not have permission to share this file!")
 
         shared_file = SharedFile.objects(file=file, user=child_usr).first()
 
         if shared_file is None:
-            SharedFile(file=file, user=child_usr, permission=perm, owner=parent_usr, explicit=True).save()
+            SharedFile(file=file, user=child_usr, permission=perm,
+                       owner=parent_usr, explicit=True).save()
         else:
             shared_file.permission = perm
             shared_file.save()
@@ -282,7 +285,8 @@ def share(
                     shared_file.permission = perm
                     shared_file.save()
             else:
-                SharedFile(file=file, user=child_usr, permission=perm, explicit=False).save()
+                SharedFile(file=file, user=child_usr,
+                           permission=perm, explicit=False).save()
 
             shared_list.append(shared_file)
 
@@ -328,7 +332,8 @@ def get_shared_with(
         if file is None:
             raise HTTPException(status_code=400, detail="File does not exist!")
         else:
-            shared_file = SharedFile.objects(user=user, explicit=True, file=file).first()
+            shared_file = SharedFile.objects(
+                user=user, explicit=True, file=file).first()
 
             if shared_file:
                 if shared_file.file.is_dir:
@@ -432,6 +437,8 @@ def unshare(
 #     file = File.objects(path=path).first()
 #     if not file:
 #         raise HTTPException(status_code=400, detail="File does not exist!")
+
+
 class TokenResponse(BaseModel):
     token: str
 

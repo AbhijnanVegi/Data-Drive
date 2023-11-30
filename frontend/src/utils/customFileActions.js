@@ -48,9 +48,23 @@ const deleteFiles = defineFileAction({
   },
 });
 
+const shareFiles = defineFileAction({
+  id: "share_files",
+  requiresSelection: true,
+  hotkeys: ["shift+s"],
+  button: {
+    name: "Share files",
+    toolbar: true,
+    contextMenu: true,
+    group: "Actions",
+    icon: ChonkyIconName.share,
+  },
+});
+
 export const customActions = [
   uploadFileAction,
   createFolderAction,
   downloadFiles,
   deleteFiles,
+  shareFiles
 ];

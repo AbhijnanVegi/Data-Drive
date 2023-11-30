@@ -7,45 +7,73 @@
   --background-color: black;
   --text-color: white;
 }
+
 .full-page {
-    height: 100vh;
-    width: 100vw;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
 }
 
-.chonky{
-    height: 100vh;
-    width: 100vw;
-    font-size: 100px;
-    font-weight: bold;
-    color: #fff;
-    text-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+[data-theme="dark"] .ant-tabs {
+  background-color: #424242;
 }
+
+[data-theme="dark"] .ant-spin-container {
+  background-color: #424242;
+}
+
+
+
+[data-theme="dark"] .full-page {
+  background-color: #424242;
+}
+
+[data-theme="dark"] .ant-menu-sub {
+  background-color: #323232 !important; 
+  color: #fff;
+}
+
+
+
+.chonky {
+  height: 100vh;
+  width: 100vw;
+  font-size: 100px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
 .chonky-fileThumbnail {
-    background-size: cover !important;
+  background-size: cover !important;
 }
 
-.chonky-chonkyRoot{
+.chonky-chonkyRoot {
+  /* remove borders completely */
+  height: 100vh !important;
+  border: none !important;
   border-radius: 0px !important;
 }
 
 
-[class*=' Mui'],[class^='Mui'] {
-    font-family: Quicksand !important;
-    font-size: 17px;
+[class*=' Mui'],
+[class^='Mui'] {
+  font-family: Quicksand !important;
+  font-size: 17px;
 }
 
-[class*=' ant'],[class^='ant'] {
-    font-family: Quicksand !important;
+[class*=' ant'],
+[class^='ant'] {
+  font-family: Quicksand !important;
 }
 
-[class*=' listFileEntryProperty'],[class^='listFileEntryProperty']{
-  flex-basis : 160px !important;
+[class*=' listFileEntryProperty'],
+[class^='listFileEntryProperty'] {
+  flex-basis: 160px !important;
 }
 
-.carousel-div{
+.carousel-div {
   height: 500px;
   width: 100vw;
   display: flex;
@@ -53,7 +81,7 @@
   align-items: center;
 }
 
-.videoName{
+.videoName {
   font-size: 20px;
   font-weight: bold;
   color: #000;
@@ -86,3 +114,43 @@
   align-items: center;
   padding: 1em;
 }
+
+.tabs {
+  margin-top: 50px;
+  /* Adjust this value as needed */
+  margin-left: 50px;
+}
+
+.centered-opaque-spinner .ant-spin-dot {
+  opacity: 1 !important;
+}
+
+.centered-opaque-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.custom-menu {
+  width: 300px;
+  align-items: flex-start !important;
+}
+
+.menu-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.menu-container h1 {
+  font-size: 2em;
+  /* Adjust as needed */
+}
+
+.ant-menu-dark{
+  background-color: #424242;
+  color : #fff;
+}
+
+

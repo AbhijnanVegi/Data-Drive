@@ -26,8 +26,6 @@ class File(Document):
 
     public = EnumField(Permission, required=True, default=Permission.NONE)
 
-    is_dir = BooleanField(required=True, default=False)
-
     meta = {
         "indexes": [
             "path",

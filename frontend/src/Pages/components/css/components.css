@@ -1,0 +1,20 @@
+.right-sidebar {
+    display: flex;
+    flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    width: 300px;
+    height: 100vh;
+}
+
+.empty-subtitle {
+    width: 200px;
+    word-wrap: break-word;
+    font-size: 0.6em;
+    text-align: center;
+}
+hr {
+  width: 50%;
+  margin: 0 auto;
+}
