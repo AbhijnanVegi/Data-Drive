@@ -1,57 +1,101 @@
-import io
-import mimetypes
 import os
-import re
+import mimetypes
+import io
+import secrets
+from datetime import datetime, timedelta
+from typing import Annotated, List
 
-from flask import Blueprint, request, jsonify, session, send_file
-from flask_cors import CORS
-from werkzeug.utils import secure_filename
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Body,
+    UploadFile,
+    Form,
+    BackgroundTasks,
+)
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from minio.deleteobjects import DeleteObject
 
-from backend.models.file import File, SharedFile
-from backend.models.user import User
-from backend.storage.client import minio_client as mc
+from config import MAX_PREVIEW_SIZE, MIN_BANDWIDTH
+from dependencies import get_auth_user, get_auth_user_optional, MessageResponse
+from models.user import User
+from models.file import File, SharedFile
+from models.file import Permission
+from models.job import Job, Status
 
-files_bp = Blueprint('files', __name__)
-CORS(files_bp, supports_credentials=True)
+from storage.client import minio_client as mc
+from tasks.files import create_job
+
+files_router = APIRouter(
+    prefix="",
+    tags=["files"],
+    responses={404: {"description": "Not found"}},
+)
 
 
-@files_bp.route('/upload', methods=['POST'])
-def upload_file():
-    """
-    Desc: Upload file to storage
-    Params: path = string
-            file = file
-    """
-    data = request.form
+class PathForm(BaseModel):
+    path: str
 
-    file = File.objects(path=data.get('path')).first()
-    if file:
-        return jsonify({'message': 'File already exists!'}), 400
 
-    directory = File.objects(path=os.path.dirname(data.get('path'))).first()
+class ObjectModel(BaseModel):
+    path: str
+    is_dir: bool
+    last_modified: datetime | None
+    size: int | None
+    metadata: dict | None
+
+
+class SharedFileModel(BaseModel):
+    path: str
+    is_dir: bool
+    last_modified: datetime | None
+    size: int | None
+    metadata: dict | None
+    permission: Permission
+    explicit: bool
+    shared_with: str
+
+
+@files_router.post("/upload", response_model=MessageResponse)
+async def upload_file(
+    path: Annotated[str, Form()],
+    file: UploadFile,
+    username: Annotated[str, Depends(get_auth_user)],
+):
+    fileObj = File.objects(path=path).first()
+    if fileObj:
+        return {"message": "File already exists!"}
+
+    directory = File.objects(path=os.path.dirname(path)).first()
     if not directory:
-        return jsonify({'message': 'Directory does not exist!'}), 400
+        return {"message": "Directory does not exist!"}
 
-    user = User.objects(id=session.get('user_id')).first()
+    user = User.objects(username=username).first()
     if not directory.can_write(user):
-        return jsonify({'message': 'You do not have permission to upload to this directory!'}), 400
+        return {"message": "You do not have permission to upload to this directory!"}
 
-    file = request.files.get('file')
-    if not file:
-        return jsonify({'message': 'No file provided!'}), 400
-
-    content_type = mimetypes.guess_type(data.get('path'))[0]
+    content_type = mimetypes.guess_type(path)[0]
     if content_type is None:
-        content_type = 'application/octet-stream'
-
-    file.save('/tmp/' + secure_filename(data.get('path')))
+        content_type = "application/octet-stream"
 
     try:
-        mc.fput_object('data-drive', data.get('path'), '/tmp/' + secure_filename(data.get('path')), content_type)
+        # mc.fput_object(
+        # "data-drive", data.path, "/tmp/" + secure_filename(data.path), content_type
+        # )
+        # mc.fput_object('data-drive', path, file.file.fileno(), content_type)
+        mc.put_object(
+            "data-drive", path, file.file, -1, content_type, part_size=10 * 1024 * 1024
+        )
 
         # Create database entry for file
-        file = File(path=data.get('path'), size=file.content_length, owner=user, public=directory.public,
-                    is_dir=False).save()
+        file = File(
+            path=path,
+            size=file.size,
+            owner=user,
+            public=directory.public,
+        ).save()
 
         # Inherit permissions from parent directory
         shares = SharedFile.objects(file=directory)
@@ -59,150 +103,171 @@ def upload_file():
             SharedFile(file=file, user=share.user, permission=share.permission,
                        path=f"shared/{share.user.username}/" + file.path).save()
 
-        return jsonify({'message': 'File uploaded successfully!'})
+        return {"message": "File uploaded successfully!"}
 
     except Exception as err:
         print(err)
-        return jsonify({'message': str(err)}), 400
+        return {"message": str(err)}
 
 
-@files_bp.route('/mkdir', methods=['POST'])
-def mkdir():
-    """
-    Desc: Create a new directory
-    Params: path = string
-    """
-    data = request.get_json()
-
-    directory = File.objects(path=data.get('path')).first()
+@files_router.post("/mkdir", response_model=MessageResponse)
+def mkdir(
+    data: Annotated[PathForm, Body(embed=True)],
+    username: Annotated[str, Depends(get_auth_user)],
+):
+    directory = File.objects(path=data.path).first()
     if directory:
-        return jsonify({'message': 'Directory already exists!'}), 400
+        return {"message": "Directory already exists!"}
 
-    parent = File.objects(path=os.path.dirname(data.get('path'))).first()
-    print(os.path.dirname(data.get('path')))
+    parent = File.objects(path=os.path.dirname(data.path)).first()
     if not parent:
-        return jsonify({'message': 'Parent directory does not exist!'}), 400
+        return {"message": "Parent directory does not exist!"}
 
-    user = User.objects(id=session.get('user_id')).first()
+    user = User.objects(username=username).first()
     if not parent.can_write(user):
-        return jsonify({'message': 'You do not have permission to create a directory here!'}), 400
+        return {"message": "You do not have permission to create a directory here!"}
 
-    directory = File(path=data.get('path'), owner=user, is_dir=True).save()
-    mc.put_object('data-drive', data.get('path') + '/_', io.BytesIO(b''), 0)
-    return jsonify({'message': 'Directory created successfully!'})
-
-
-@files_bp.route('/create_home', methods=['POST'])
-def create_home():
-    """
-    Desc: Create home directory for user
-    Note: Use this endpoint only if home directory is not created
-    Params: None
-    """
-    user = User.objects(id=session.get('user_id')).first()
-    if not user:
-        return jsonify({'message': 'User does not exist!'}), 400
-
-    File(path=user.username, size=0, owner=user, is_dir=True).save()
-    return jsonify({'message': 'Home directory created successfully!'})
+    directory = File(path=data.path, owner=user, is_dir=True).save()
+    mc.put_object("data-drive", data.path + "/_", io.BytesIO(b""), 0)
+    return {"message": "Directory created successfully!"}
 
 
-@files_bp.route('/list', methods=['POST'])
-def list():
-    """
-    Desc: List files in directory
-    Params: path = string
-    Returns: objects = list({path, is_dir, last_modified, size, metadata})
-    """
-    data = request.get_json()
+@files_router.post("/list", response_model=List[ObjectModel])
+def list(
+    data: Annotated[PathForm, Body(embed=True)],
+    username: Annotated[str, Depends(get_auth_user_optional)],
+):
+    directory = File.objects(path=data.path).first()
+    if not directory or not directory.is_dir:
+        raise HTTPException(status_code=400, detail="Directory does not exist!")
 
-    directory = File.objects(path=data.get('path')).first()
-    if not directory:
-        return jsonify({'message': 'Directory does not exist!'}), 400
-
-    user = User.objects(id=session.get('user_id')).first()
+    if username:
+        user = User.objects(username=username).first()
+    else:
+        user = None
     if not directory.can_read(user):
-        return jsonify({'message': 'You do not have permission to access this directory!'}), 400
+        raise HTTPException(
+            status_code=400,
+            detail="You do not have permission to access this directory!",
+        )
 
-    objects = mc.list_objects('data-drive', prefix=data.get('path') + '/', include_user_meta=True)
-    obj_json = []
-    for obj in objects:
-        print(obj.object_name, obj.is_dir, obj.last_modified, obj.etag, obj.size, obj.content_type, obj.metadata)
-        obj_json.append({
-            'path': obj.object_name,
-            'is_dir': obj.is_dir,
-            'last_modified': obj.last_modified,
-            'size': obj.size,
-            'metadata': obj.metadata
-        })
+    objJSON = []
+    for obj in mc.list_objects("data-drive", data.path + "/", recursive=False):
+        objJSON.append(
+            {
+                "path": obj.object_name,
+                "is_dir": obj.is_dir,
+                "last_modified": obj.last_modified,
+                "size": obj.size,
+                "metadata": obj.metadata,
+            }
+        )
 
-    return jsonify({'objects': obj_json})
+    return objJSON
 
 
-@files_bp.route('/get/<path:path>', methods=['GET'])
-def get_file(path):
-    """
-    Desc: Get file from storage
-    Params: path = string
-    """
+@files_router.post("/delete", response_model=MessageResponse)
+def delete(
+    data: Annotated[PathForm, Body(embed=True)],
+    username: Annotated[str, Depends(get_auth_user)],
+):
+    file = File.objects(path=data.path).first()
+    if not file:
+        raise HTTPException(status_code=400, detail="File does not exist!")
+
+    is_dir = file.is_dir
+    if is_dir:
+        if file.path == username:
+            raise HTTPException(
+                status_code=400, detail="You cannot delete your home directory!"
+            )
+
+    user = User.objects(username=username).first()
+    if not file.can_write(user):
+        raise HTTPException(
+            status_code=400, detail="You do not have permission to delete this file/folder!"
+        )
+
+    if is_dir:
+        mc.remove_object("data-drive", data.path + "/_")
+        delete_object_list = map(
+            lambda x: DeleteObject(x.object_name),
+            mc.list_objects("data-drive", data.path, recursive=True),
+        )
+        errors = mc.remove_objects("data-drive", delete_object_list)
+        # delete shared file objects associated with files in the directory
+        for file in File.objects(path__startswith=data.path):
+            SharedFile.objects(file=file).delete()
+            file.delete()
+            
+        for error in errors:
+            print("Error occurred when deleting " + error.object_name)
+        return {"message": "Folder deleted successfully!"}
+    else:
+        mc.remove_object("data-drive", data.path)
+        SharedFile.objects(file=file).delete()
+        file.delete()
+        return {"message": "File deleted successfully!"}
+
+
+
+@files_router.get("/get/<path:path>", response_class=FileResponse)
+def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)]):
     file = File.objects(path=path).first()
     if not file:
-        return jsonify({'message': 'File does not exist!'}), 400
+        raise HTTPException(status_code=400, detail="File does not exist!")
+    
+    if file.is_dir:
+        raise HTTPException(status_code=400, detail="Cannot preview a directory!")
 
-    user = User.objects(id=session.get('user_id')).first()
+    user = None
+    if username:
+        user = User.objects(username=username).first()
     if not file.can_read(user):
-        return jsonify({'message': 'You do not have permission to access this file!'}), 400
+        raise HTTPException(
+            status_code=400, detail="You do not have permission to access this file!"
+        )
 
     try:
-        mc.fget_object('data-drive', path, '/tmp/' + path)
-        return send_file('/tmp/' + path)
+        mc.fget_object("data-drive", path, "/tmp/" + path)
+        return "/tmp/" + path
     except Exception as err:
-        return jsonify({'message': str(err)}), 400
+        raise HTTPException(status_code=400, detail=str(err))
 
-@files_bp.route('/share', methods=['POST'])
-def share():
-    """
-    Desc: Shares a given file/dir to another user, updating the user permissions for that file /dir
-    Params: 
-        path = string
-        child_user = string
-        permission = 'read' | 'write' | 'none'
-    """
 
-    parent_user = session.get('user_id')
-    if not parent_user:
-        return jsonify({'message': 'No user logged in!'}), 400
+@files_router.post("/share", response_model=MessageResponse)
+def share(
+        path: Annotated[str, Body(embed=True)],
+        parent_username: Annotated[str, Depends(get_auth_user)],
+        child_username: Annotated[str, Body(embed=True)],
+        perm: Annotated[Permission, Body(embed=True)] = Permission.READ,
+):
+    # if parent_usr == share_usr:
+    #     raise HTTPException(status_code=400, detail="You cannot share with yourself!")
 
-    data = request.get_json()
+    file = File.objects(path=path).first()
 
-    child_user = User.objects(username=data.get('child_user')).first()
-    permission = data.get('permission')
+    shared_list = []
 
-    if child_user is None:
-        return jsonify({'message': 'Child user does not exist!'}), 400
-    if permission is None:
-        return jsonify({'message': 'Permission not provided!'}), 400
-
-    file = File.objects(path=data.get('path')).first()
-
-    if file is None:
-        return jsonify({'message': 'File does not exist!'}), 400
+    if not file:
+        raise HTTPException(status_code=400, detail="File does not exist!")
     else:
-        parent_user = User.objects(id=parent_user).first()
-        if file.owner != parent_user:
-            return jsonify({'message': 'You do not have permission to share this file!'}), 400
+        parent_usr = User.objects(username=parent_username).first()
+        child_usr = User.objects(username=child_username).first()
+        if file.owner != parent_usr:
+            raise HTTPException(status_code=400, detail="You do not have permission to share this file!")
 
-        shared_file = SharedFile.objects(file=file, user=child_user).first()
+        shared_file = SharedFile.objects(file=file, user=child_usr).first()
+
         if shared_file is None:
-            shared_file = SharedFile(file=file, user=child_user, permission=permission, explicit=True).save()
+            SharedFile(file=file, user=child_usr, permission=perm, owner=parent_usr, explicit=True).save()
         else:
-            shared_file.permission = permission
+            shared_file.permission = perm
             shared_file.save()
 
-    obj_json = []
+        shared_list.append(shared_file)
 
-    objects = mc.list_objects('data-drive', prefix=data.get('path') + '/', recursive=True, include_user_meta=True)
-    for obj in objects:
+    for obj in mc.list_objects("data-drive", prefix=path + "/", recursive=True):
         if obj.object_name[-1] == '_':
             file_path = obj.object_name[:-2]
             file = File.objects(path=file_path).first()
@@ -210,105 +275,219 @@ def share():
             file = File.objects(path=obj.object_name).first()
 
         if file:
-            shared_file = SharedFile.objects(file=file, user=child_user).first()
-            if shared_file is None:
-                shared_file = SharedFile(file=file, user=child_user, permission=permission,
-                                                 explicit=False).save()
-            else:
-                if permission > shared_file.permission:
-                    shared_file.permission = permission
+            shared_file = SharedFile.objects(file=file, user=child_usr).first()
+
+            if shared_file:
+                if perm.value > shared_file.permission.value:
+                    shared_file.permission = perm
                     shared_file.save()
+            else:
+                SharedFile(file=file, user=child_usr, permission=perm, explicit=False).save()
 
-            obj_json.append({
-                'path': shared_file.file.path,
-                'user': shared_file.user.username,
-                'permission': shared_file.permission.value
-            })
+            shared_list.append(shared_file)
 
-    return jsonify({'message': 'File shared successfully!', 'shared_files': obj_json})
+    return {"message": "File shared successfully!"}
 
 
-@files_bp.route('/list_shared', methods=['GET'])
-def get_shared():
+@files_router.post("/list_shared_with", response_model=List[SharedFileModel])
+def get_shared_with(
+        username: Annotated[str, Depends(get_auth_user_optional)],
+        path: Annotated[str, Body(embed=True)] = None,
+):
     """
-    Desc: Get all files shared with user
-    Params: None
+    Desc: List the shared files with the user, in the specified directory,
+    if no directory is specified, list all the shared files with the user.
     """
 
-    data = request.get_json()
-    path = data.get('path')
-    user = session.get('user_id')
+    if username:
+        user = User.objects(username=username).first()
+    else:
+        user = None
+        return {"message": "You are not logged in!"}
+
+    shared_list = []
 
     if path is None:
-        explicit_shares = SharedFile.objects(explicit=True, user=user)
-
-        shared_json = []
-        for explicit_share in explicit_shares:
-            shared_json.append({
-                'path': explicit_share.file.path,
-                'permission': explicit_share.permission.value,
-                'is_dir': explicit_share.file.is_dir,
-            })
-
-        return jsonify({'shared_files': shared_json})
+        for shared_file in SharedFile.objects(user=user, explicit=True):
+            file = shared_file.file
+            shared_list.append(
+                {
+                    "path": file.path,
+                    "is_dir": file.is_dir,
+                    "last_modified": None,
+                    "size": file.size,
+                    "metadata": None,
+                    "permission": shared_file.permission,
+                    "explicit": shared_file.explicit,
+                    "shared_with": shared_file.user.username,
+                }
+            )
     else:
-        shared_json = []
         file = File.objects(path=path).first()
 
         if file is None:
-            return jsonify({'message': 'File does not exist!'}), 400
-
-        shared_file = SharedFile.objects(file=file, user=user).first()
-
-        if shared_file is None:
-            return jsonify({'message': 'No file shared with user!'}), 400
+            raise HTTPException(status_code=400, detail="File does not exist!")
         else:
-            if shared_file.file.is_dir:
-                objects = mc.list_objects('data-drive', prefix=path + '/', recursive=False, include_user_meta=True)
+            shared_file = SharedFile.objects(user=user, explicit=True, file=file).first()
 
-                obj_json = []
-                for obj in objects:
-                    obj_json.append({
-                        'path': obj.object_name,
-                        'is_dir': obj.is_dir,
-                        'last_modified': obj.last_modified,
-                        'size': obj.size,
-                        'metadata': obj.metadata,
-                    })
+            if shared_file:
+                if shared_file.file.is_dir:
+                    for obj in mc.list_objects("data-drive", prefix=path + "/", recursive=False):
+                        shared_list.append(
+                            {
+                                "path": obj.object_name,
+                                "is_dir": obj.is_dir,
+                                "last_modified": obj.last_modified,
+                                "size": obj.size,
+                                "metadata": obj.metadata,
+                            }
+                        )
+                else:
+                    shared_list.append(
+                        {
+                            "path": shared_file.file.path,
+                            "is_dir": shared_file.file.is_dir,
+                            "last_modified": None,
+                            "size": shared_file.file.size,
+                            "metadata": None,
+                        }
+                    )
+    return shared_list
 
-                return jsonify({'shared_objects': obj_json})
 
-@files_bp.route('/clear_shared', methods=['POST'])
-def clear_shared():
+@files_router.post("/list_shared_by", response_model=List[SharedFileModel])
+def get_shared_by(
+        username: Annotated[str, Depends(get_auth_user_optional)],
+):
     """
-    Desc: Clear all files shared with user
-    Params: None
+    Desc: List the explicit shared files by the user.
     """
+    if username is not None:
+        user = User.objects(username=username).first()
+        shared_list = []
 
-    user = User.objects(id=session.get('user_id')).first()
-    if not user:
-        return jsonify({'message': 'User does not exist!'}), 400
+        for shared_file in SharedFile.objects(owner=user, explicit=True):
+            file = shared_file.file
+            shared_list.append(
+                {
+                    "path": file.path,
+                    "is_dir": file.is_dir,
+                    "last_modified": None,
+                    "size": file.size,
+                    "metadata": None,
+                    "permission": shared_file.permission,
+                    "explicit": shared_file.explicit,
+                    "shared_with": shared_file.user.username,
+                }
+            )
+
+        return shared_list
     else:
-        SharedFile.objects(user=user).delete()
-        return jsonify({'message': 'All shared files cleared!'}), 200
+        user = None
+        return {"message": "You are not logged in!"}
 
-@files_bp.route('/download/<path:path>', methods=['GET'])
-def download_file(path):
+
+@files_router.post("/unshare", response_model=MessageResponse)
+def unshare(
+        path: Annotated[str, Body(embed=True)],
+        child_username: Annotated[str, Body(embed=True)],
+        parent_username: Annotated[str, Depends(get_auth_user)],
+):
     """
-    Desc: Download file from storage
-    Params: path = string
+    Desc: Unshare the file specified by the path.
     """
     file = File.objects(path=path).first()
+    parent_usr = User.objects(username=parent_username).first()
+    child_usr = User.objects(username=child_username).first()
+
+    if file is None:
+        raise HTTPException(status_code=400, detail="File does not exist!")
+    else:
+        shared_file = SharedFile.objects(file=file, user=child_usr).first()
+
+        if shared_file.explicit:
+            shared_file.delete()
+            return {"message": "File unshared successfully!"}
+        else:
+            return {"message": "File is not explicitly shared, delete the parent share first!"}
+
+# @files_router.post("/unshare", response_model=MessageResponse)
+# def clear_shared(
+#         username: Annotated[str, Depends(get_auth_user_optional)],
+# ):
+#     usr = User.objects(username=username).first()
+#
+#     if usr is None:
+#         raise HTTPException(status_code=400, detail="User does not exist!")
+#     else:
+#         SharedFile.objects(user=usr).delete()
+#         return {"message": "Shared files cleared successfully!"}
+
+# @files_router.get("/download/<path:path>")
+# def download_file(path):
+#     """
+#     Desc: Download file from storage
+#     Params: path = string
+#     """
+#     file = File.objects(path=path).first()
+#     if not file:
+#         raise HTTPException(status_code=400, detail="File does not exist!")
+class TokenResponse(BaseModel):
+    token: str
+
+
+@files_router.get("/token/{path:path}", response_model=TokenResponse)
+def download_file(
+    path: str,
+    username: Annotated[str, Depends(get_auth_user_optional)],
+    background_tasks: BackgroundTasks,
+):
+    file = File.objects(path=path).first()
     if not file:
-        return jsonify({'message': 'File does not exist!'}), 400
+        raise HTTPException(status_code=400, detail="File does not exist!")
 
-    user = User.objects(id=session.get('user_id')).first()
+    user = User.objects(username=username).first()
     if not file.can_read(user):
-        return jsonify({'message': 'You do not have permission to access this file!'}), 400
+        raise HTTPException(
+            status_code=400, detail="You do not have permission to access this file!"
+        )
 
-    try:
-        mc.fget_object('data-drive', path, '/tmp/' + path)
-        return send_file('/tmp/' + path, as_attachment=True)
-    except Exception as err:
-        return jsonify({'message': str(err)}), 400
+    # generate a token for download
+    token = secrets.token_urlsafe(32)
+    if file.is_dir:
+        files = File.objects(path__startswith=path + '/')
+        background_tasks.add_task(create_job, token, files, username, path)
+    else:
+        background_tasks.add_task(create_job, token, [file], username, None)
 
+    return {"token": token}
+
+
+class StatusResponse(BaseModel):
+    status: str
+    progress: int
+
+
+@files_router.get("/status/{token}", response_model=StatusResponse)
+def token_status(token: str):
+    job = Job.objects(token=token).first()
+    if not job:
+        raise HTTPException(status_code=400, detail="Job does not exist!")
+
+    return {"status": job.status.value, "progress": job.progress}
+
+
+@files_router.get("/download/{token}", response_class=FileResponse)
+def download(token: str):
+    job = Job.objects(token=token).first()
+    if not job or job.expired:
+        raise HTTPException(status_code=400, detail="Job does not exist!")
+
+    if job.status != Status.DONE:
+        raise HTTPException(status_code=400, detail="Job not done yet!")
+
+    job.expired = True
+    job.exp_time = datetime.now() + timedelta(minutes=job.size / (60 * MIN_BANDWIDTH))
+    job.save()
+
+    return job.download_path

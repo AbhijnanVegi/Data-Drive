@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Form, Input } from 'antd';
 
-const CreateButtonModalForm = ({ onSubmit }) => {
+const CreateFolderModalForm = ({ onSubmit }) => {
     const onFinish = (values) => {
         console.log('Success:', values);
         onSubmit(values);
@@ -54,4 +54,4 @@ const CreateButtonModalForm = ({ onSubmit }) => {
         </Form>
     )
 };
-export default CreateButtonModalForm;
+export default CreateFolderModalForm;
