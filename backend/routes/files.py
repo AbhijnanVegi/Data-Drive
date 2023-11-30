@@ -5,6 +5,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Annotated, List
 
+import minio.commonconfig
 from fastapi import (
     APIRouter,
     Depends,
@@ -59,9 +60,9 @@ class SharedFileModel(BaseModel):
 
 @files_router.post("/upload", response_model=MessageResponse)
 async def upload_file(
-    path: Annotated[str, Form()],
-    file: UploadFile,
-    username: Annotated[str, Depends(get_auth_user)],
+        path: Annotated[str, Form()],
+        file: UploadFile,
+        username: Annotated[str, Depends(get_auth_user)],
 ):
     fileObj = File.objects(path=path).first()
     if fileObj:
@@ -110,8 +111,8 @@ async def upload_file(
 
 @files_router.post("/mkdir", response_model=MessageResponse)
 def mkdir(
-    data: Annotated[PathForm, Body(embed=True)],
-    username: Annotated[str, Depends(get_auth_user)],
+        data: Annotated[PathForm, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user)],
 ):
     directory = File.objects(path=data.path).first()
     if directory:
@@ -132,8 +133,8 @@ def mkdir(
 
 @files_router.post("/list", response_model=List[ObjectModel])
 def list(
-    data: Annotated[PathForm, Body(embed=True)],
-    username: Annotated[str, Depends(get_auth_user_optional)],
+        data: Annotated[PathForm, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user_optional)],
 ):
     directory = File.objects(path=data.path).first()
     if not directory or not directory.is_dir:
@@ -163,10 +164,11 @@ def list(
 
     return objJSON
 
+
 @files_router.post("/delete", response_model=MessageResponse)
 def delete(
-    data: Annotated[PathForm, Body(embed=True)],
-    username: Annotated[str, Depends(get_auth_user)],
+        data: Annotated[PathForm, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user)],
 ):
     file = File.objects(path=data.path).first()
     if not file:
@@ -196,7 +198,7 @@ def delete(
         for file in File.objects(path__startswith=data.path):
             SharedFile.objects(file=file).delete()
             file.delete()
-            
+
         for error in errors:
             print("Error occurred when deleting " + error.object_name)
         return {"message": "Folder deleted successfully!"}
@@ -207,13 +209,12 @@ def delete(
         return {"message": "File deleted successfully!"}
 
 
-
 @files_router.get("/get/<path:path>", response_class=FileResponse)
 def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)]):
     file = File.objects(path=path).first()
     if not file:
         raise HTTPException(status_code=400, detail="File does not exist!")
-    
+
     if file.is_dir:
         raise HTTPException(status_code=400, detail="Cannot preview a directory!")
 
@@ -257,7 +258,7 @@ def share(
         shared_file = SharedFile.objects(file=file, user=child_usr).first()
 
         if shared_file is None:
-            SharedFile(file=file, user=child_usr, permission=perm, explicit=True).save()
+            SharedFile(file=file, user=child_usr, permission=perm, explicit=True, owner=parent_usr).save()
         else:
             shared_file.permission = perm
             shared_file.save()
@@ -279,7 +280,7 @@ def share(
                     shared_file.permission = perm
                     shared_file.save()
             else:
-                SharedFile(file=file, user=child_usr, permission=perm, explicit=False).save()
+                SharedFile(file=file, user=child_usr, permission=perm, explicit=False, owner=parent_usr).save()
 
             shared_list.append(shared_file)
 
@@ -325,11 +326,22 @@ def get_shared_with(
         if file is None:
             raise HTTPException(status_code=400, detail="File does not exist!")
         else:
-            shared_file = SharedFile.objects(user=user, explicit=True, file=file).first()
+            shared_file = SharedFile.objects(user=user, file=file).first()
 
             if shared_file:
                 if shared_file.file.is_dir:
                     for obj in mc.list_objects("data-drive", prefix=path + "/", recursive=False):
+                        if obj.object_name[-1] == '_':
+                            continue
+
+                        if obj.is_dir:
+                            print(obj.object_name)
+                            _shared_file = SharedFile.objects(user=user, file=File.objects(
+                                path=obj.object_name[:-1]).first()).first()
+                        else:
+                            print(obj.object_name)
+                            _shared_file = SharedFile.objects(user=user,
+                                                              file=File.objects(path=obj.object_name).first()).first()
                         shared_list.append(
                             {
                                 "path": obj.object_name,
@@ -337,6 +349,9 @@ def get_shared_with(
                                 "last_modified": obj.last_modified,
                                 "size": obj.size,
                                 "metadata": obj.metadata,
+                                "permission": _shared_file.permission,
+                                "explicit": _shared_file.explicit,
+                                "shared_with": _shared_file.user.username,
                             }
                         )
                 else:
@@ -347,6 +362,9 @@ def get_shared_with(
                             "last_modified": None,
                             "size": shared_file.file.size,
                             "metadata": None,
+                            "permission": shared_file.permission,
+                            "explicit": shared_file.explicit,
+                            "shared_with": shared_file.user.username,
                         }
                     )
     return shared_list
@@ -408,36 +426,116 @@ def unshare(
         else:
             return {"message": "File is not explicitly shared, delete the parent share first!"}
 
-# @files_router.post("/unshare", response_model=MessageResponse)
-# def clear_shared(
-#         username: Annotated[str, Depends(get_auth_user_optional)],
-# ):
-#     usr = User.objects(username=username).first()
-#
-#     if usr is None:
-#         raise HTTPException(status_code=400, detail="User does not exist!")
-#     else:
-#         SharedFile.objects(user=usr).delete()
-#         return {"message": "Shared files cleared successfully!"}
 
-# @files_router.get("/download/<path:path>")
-# def download_file(path):
-#     """
-#     Desc: Download file from storage
-#     Params: path = string
-#     """
-#     file = File.objects(path=path).first()
-#     if not file:
-#         raise HTTPException(status_code=400, detail="File does not exist!")
+@files_router.post("/copy", response_model=MessageResponse)
+def copy(
+        src_path: Annotated[str, Body(embed=True)],
+        dest_path: Annotated[str, Body(embed=True)],
+):
+    """
+    Desc: Move the file specified by the path.
+    """
+    src_file = File.objects(path=src_path).first()
+    dest_file = File.objects(path=dest_path).first()
+
+    parent_path = os.path.dirname(src_path)
+
+    if src_file is None:
+        raise HTTPException(status_code=400, detail="Source file/folder does not exist!")
+
+    if dest_file is None:
+        raise HTTPException(status_code=400, detail="Destination folder does not exist!")
+    elif not dest_file.is_dir:
+        raise HTTPException(status_code=400, detail="Destination is not a directory!")
+
+    if src_file.is_dir:
+        for obj in mc.list_objects("data-drive", prefix=src_path + "/", recursive=True):
+            mc.copy_object("data-drive", dest_path + obj.object_name[len(parent_path):],
+                           minio.commonconfig.CopySource("data-drive", obj.object_name))
+
+        for file in File.objects(path__startswith=src_path):
+            File(path=dest_path + file.path[len(parent_path):], size=file.size, owner=file.owner, public=file.public,
+                 is_dir=file.is_dir).save()
+    else:
+        mc.copy_object("data-drive", dest_path + src_path[len(src_path):],
+                       minio.commonconfig.CopySource("data-drive", src_path))
+        File(path=dest_path + src_file.path[len(parent_path):], size=src_file.size, owner=src_file.owner,
+             public=src_file.public, is_dir=src_file.is_dir).save()
+
+    return {"message": "File/folder copied successfully!"}
+
+
+@files_router.post("/move", response_model=MessageResponse)
+def move(
+        src_path: Annotated[str, Body(embed=True)],
+        dest_path: Annotated[str, Body(embed=True)],
+):
+    """
+    Desc: Move the file specified by the path.
+    src_path : File/folder to be moved
+    dest_path : Destination folder (src_path will be moved to inside the folder pointed by dest_path)
+    """
+
+    src_file = File.objects(path=src_path).first()
+    dest_file = File.objects(path=dest_path).first()
+
+    parent_path = os.path.dirname(src_path)
+
+    if src_file is None:
+        raise HTTPException(status_code=400, detail="Source file/folder does not exist!")
+
+    if dest_file is None:
+        raise HTTPException(status_code=400, detail="Destination folder does not exist!")
+
+    if not dest_file.is_dir:
+        raise HTTPException(status_code=400, detail="Destination is not a directory!")
+
+    if src_file.is_dir:
+        for obj in mc.list_objects("data-drive", prefix=src_path + "/", recursive=True):
+            mc.copy_object("data-drive", dest_path + obj.object_name[len(parent_path):],
+                           minio.commonconfig.CopySource("data-drive", obj.object_name))
+            mc.remove_object("data-drive", obj.object_name)
+
+        to_move_share = File.objects(path=src_path).first()
+        users_to_move_for = []
+
+        for _share in SharedFile.objects(file=to_move_share):
+            if _share.explicit:
+                users_to_move_for.append(_share.user)
+
+        for file in File.objects(path__startswith=src_path):
+            shares = SharedFile.objects(file=file)
+            file.path = dest_path + file.path[len(parent_path):]
+            file.save()
+            for _share in shares:
+                if _share.user not in users_to_move_for:
+                    _share.delete()
+
+        return {"message": "File/folder moved successfully!"}
+
+    else:
+        obj = mc.copy_object("data-drive", dest_path + src_path[len(src_path):],
+                             minio.commonconfig.CopySource("data-drive", src_path))
+        mc.remove_object("data-drive", src_path)
+
+        to_move_file = File.objects(path=src_path).first()
+        to_move_file.path = dest_path + to_move_file.path[len(parent_path):]
+        for _share in SharedFile.objects(file=to_move_file):
+            if not _share.explicit:
+                _share.delete()
+
+        return {"message": "File/folder moved successfully!"}
+
+
 class TokenResponse(BaseModel):
     token: str
 
 
 @files_router.get("/token/{path:path}", response_model=TokenResponse)
 def download_file(
-    path: str,
-    username: Annotated[str, Depends(get_auth_user_optional)],
-    background_tasks: BackgroundTasks,
+        path: str,
+        username: Annotated[str, Depends(get_auth_user_optional)],
+        background_tasks: BackgroundTasks,
 ):
     file = File.objects(path=path).first()
     if not file:
