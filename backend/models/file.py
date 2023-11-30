@@ -1,3 +1,4 @@
+from datetime import datetime
 from mongoengine import (
     Document,
     StringField,
@@ -5,7 +6,7 @@ from mongoengine import (
     ReferenceField,
     EnumField,
     BooleanField,
-    BooleanField,
+    DateTimeField
 )
 
 from models.common import Permission
@@ -15,6 +16,7 @@ from models.user import User
 class File(Document):
     path = StringField(required=True, unique=True)
     size = IntField(required=True, default=0)
+    last_modified = DateTimeField(required=True, default=datetime.now)
     owner = ReferenceField(User, required=True)
     is_dir = BooleanField(required=True, default=False)
 
@@ -53,6 +55,19 @@ class File(Document):
 
         result = File.objects.aggregate(*pipeline)
         return result.next()["size"]
+    
+    def get_last_modified(self):
+        if not self.is_dir:
+            return self.last_modified
+
+        pipeline = [
+            {"$match": {"path": {"$regex": f"^{self.path}/"}}},
+            {"$sort": {"last_modified": -1}},
+            {"$limit": 1},
+        ]
+
+        result = File.objects.aggregate(*pipeline)
+        return result.next()["last_modified"]
 
 
 class SharedFile(Document):

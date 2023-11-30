@@ -170,10 +170,9 @@ def list(
 
     return objJSON
 
-
 class DuResponse(BaseModel):
     size: int
-
+    last_modified: datetime | None
 
 @files_router.get("/du/<path:path>", response_model=DuResponse)
 def du(
@@ -194,7 +193,7 @@ def du(
             detail="You do not have permission to access this directory!",
         )
 
-    return {"size": directory.get_size()}
+    return {"size": directory.get_size(), "last_modified": directory.get_last_modified()}
 
 
 @files_router.post("/delete", response_model=MessageResponse)
