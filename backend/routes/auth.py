@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Annotated
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException, Body, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -96,3 +96,12 @@ class UserSession(BaseModel):
 @auth_router.get("/user", response_model=UserSession)
 def user(username: Annotated[UserSession, Depends(get_auth_user)]):
     return {"username": username}
+
+class UserOut(BaseModel):
+    username: str
+    email: EmailStr
+
+@auth_router.get("/users", response_model=List[UserOut])
+def get_all_users():
+    users = User.objects()
+    return [{"username": user.username, "email": user.email} for user in users]
