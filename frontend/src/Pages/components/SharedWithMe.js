@@ -92,15 +92,14 @@ const HomePage = () => {
     setIsVideoModalOpen(false);
   };
   const handleShareFolderFormSubmit = (values) => {
-
     setIsShareFolderModalOpen(false);
     console.log("values", selectedFiles)
     selectedFiles.forEach(async (file) => {
       var tempid = file.id;
-      if (file.isDir) {
-        tempid = tempid.slice(0, -1);
+      if(file.isDir)
+      {
+        tempid = file.id.slice(0, -1);
       }
-      console.log("hello")
       const shareRequest = {
         "path": tempid,
         "child_username": values.user,
@@ -162,13 +161,22 @@ const HomePage = () => {
   useEffect(() => {
     if (path !== null && activeTab === "1")
       fetchFiles(path, setFolders, setFiles, setPictures);
-  }, [path, activeTab]);
+  }, [path]);
   useEffect(() => {
     if (sharedpath !== null && activeTab === "2") {
       fetchSharedFiles(sharedpath, setSharedFolders, setSharedFiles, setSharedPictures);
-      console.log("sharefiles", sharedfiles)
+      console.log("shared folder", sharedfolders)
+      console.log("changed sharedpath");
+      console.log("sharedfiles", sharedfiles)
     }
   }, [sharedpath, activeTab]);
+
+  // useEffect(() => {
+  //   if (sharedpath !== null) {
+  //     fetchSharedFiles(sharedpath, setSharedFolders, setSharedFiles, setSharedPictures);
+  //     console.log("sharefiles", sharedfiles)
+  //   }
+  // }, [sharedpath]);
   const handleAction = useCallback((data) => {
     console.log("File action data:", data);
     if (data.id === "upload") {
@@ -216,16 +224,10 @@ const HomePage = () => {
     if (data.id === "open_files") {
       const targetFile = data.payload.targetFile;
       if (targetFile.isDir) {
-        console.log("opening directory", activeTab)
-        if (activeTab === "1")
-          openDirectory(targetFile, setPath);
+        if(activeTab === "1")
+        openDirectory(targetFile, setPath);
         else
-        {
-          console.log("opening shared folder")
-          console.log("targetFile", targetFile)
-          openDirectory(targetFile, setSharedPath);
-          console.log("shared path is now", sharedpath)
-        }
+        openDirectory(targetFile, setSharedPath);
       } else {
         const extensionArray = targetFile.id.split(".");
         const fileExtension = extensionArray[extensionArray.length - 1];

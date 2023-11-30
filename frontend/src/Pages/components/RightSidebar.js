@@ -67,6 +67,7 @@ export const RightSidebar = ({ files, darkMode }) => {
   else if (files.length === 1) {
     const targetFile = files[0];
     if (targetFile.isDir) {
+      const owner = targetFile.id.split('/')[0];
       return (
         <div className="right-sidebar" style={sidebarStyle}>
           <div className="empty" style={{
@@ -83,12 +84,14 @@ export const RightSidebar = ({ files, darkMode }) => {
             <p className="empty-subtitle">{targetFile.name}</p>
             <hr />
             <p className="empty-subtitle">Type : Folder</p>
+            <p className="empty-subtitle">Owner : {owner}</p>
           </div>
         </div>
       );
     }
     else {
       const ext = targetFile.ext.toUpperCase();
+      const owner = targetFile.id.split('/')[0];
       let fileContent;
       if (['JPG', 'JPEG', 'PNG', 'GIF'].includes(ext)) {
         fileContent = <img src={targetFile.thumbnailUrl} alt={targetFile.name} style={{ width: '250px', height: 'auto' }} />;
@@ -118,6 +121,7 @@ export const RightSidebar = ({ files, darkMode }) => {
             <p className="empty-subtitle">{targetFile.name}</p>
             <hr />
             <p className="empty-subtitle">Type : {extensions[ext]["descriptions"][0]}</p>
+            <p className="empty-subtitle">Owner : {owner}</p>
             <p className="empty-subtitle">Size : {formatBytes(targetFile.size)}</p>
             <p className="empty-subtitle">Last Modified : {targetFile.modDate}</p>
           </div>
