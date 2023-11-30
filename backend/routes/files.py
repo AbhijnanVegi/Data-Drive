@@ -260,11 +260,13 @@ def share(
             raise HTTPException(
                 status_code=400, detail="You do not have permission to share this file!")
 
-        shared_file = SharedFile.objects(file=file, user=child_usr).first()
+        shared_file = SharedFile.objects(file=file, user=child_usr, owner=parent_usr, explicit=True).first()
 
         if shared_file is None:
-            SharedFile(file=file, user=child_usr, permission=perm,
-                       owner=parent_usr, explicit=True).save()
+            shared_file = SharedFile(file=file, user=child_usr, permission=perm,
+                       owner=parent_usr, explicit=True)
+            shared_file.save()
+
         else:
             shared_file.permission = perm
             shared_file.save()
@@ -279,15 +281,16 @@ def share(
             file = File.objects(path=obj.object_name).first()
 
         if file:
-            shared_file = SharedFile.objects(file=file, user=child_usr).first()
+            shared_file = SharedFile.objects(file=file, user=child_usr, owner=parent_usr, explicit=False).first()
 
             if shared_file:
                 if perm.value > shared_file.permission.value:
                     shared_file.permission = perm
                     shared_file.save()
             else:
-                SharedFile(file=file, user=child_usr,
-                           permission=perm, explicit=False).save()
+                shared_file = SharedFile(file=file, user=child_usr,
+                           permission=perm, explicit=False, owner=parent_usr)
+                shared_file.save()
 
             shared_list.append(shared_file)
 
@@ -594,3 +597,9 @@ def download(token: str):
     job.save()
 
     return job.download_path
+
+def refresh_share_perms(username: str):
+    """
+    Desc: When uploading a new file or making a change, call this to refresh the shares.
+    """
+
