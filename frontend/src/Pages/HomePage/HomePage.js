@@ -1,5 +1,6 @@
 import handleFileUpload from "../../utils/fileUpload";
 import React, { useEffect, useCallback, useState } from "react";
+import { Progress, Space } from 'antd';
 import { setChonkyDefaults, FullFileBrowser } from "chonky";
 import { ChonkyIconFA } from "chonky-icon-fontawesome";
 import "./css/HomePage.css";
@@ -27,6 +28,7 @@ import {
   AppstoreOutlined,
   ContainerOutlined,
   DesktopOutlined,
+  LogoutOutlined,
   MailOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -61,7 +63,7 @@ const HomePage = () => {
   const [selectedFiles, setSelectedFiles] = useState([])
   const { Header, Footer, Sider, Content } = Layout;
   const [sidebarSelection, setSidebarSelection] = useState([]);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState({});
   const [sharedByData, setSharedByData] = useState([]);
 
   const toggleTheme = () => {
@@ -294,18 +296,33 @@ const HomePage = () => {
   const menuStyle = theme === 'dark' ? {
     backgroundColor: '#424242',
     color: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    height: '100vh',
   } : {};
   const handleLogout = () => {
     // Remove the user's data from local storage or cookies
-    localStorage.removeItem('user');
+    localStorage.removeItem('token');
     // Redirect the user to the login page
     window.location.href = '/';
   };
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
+    else if (bytes < 1073741824) return (bytes / 1048576).toFixed(2) + ' MB';
+    else return (bytes / 1073741824).toFixed(2) + ' GB';
+  }
+
   return (
     <div className="full-page" data-theme={theme} >
       <div className="menu-container" style={menuStyle} >
         <h1>DataDrive</h1>
-        <Menu onClick={handleMenuClick} selectedKeys={[activeTab]} mode="inline" className="custom-menu" theme={theme}
+        <Menu
+          style={{
+            marginBottom: 'auto',
+          }}
+          onClick={handleMenuClick} selectedKeys={[activeTab]} mode="inline" className="custom-menu" theme={theme}
           items={[
             {
               label: 'Home',
@@ -337,9 +354,46 @@ const HomePage = () => {
         >
         </Menu>
         <div className="user-info">
-          <p>{user}</p>
-          <button onClick={handleLogout}>Logout</button>
+          <Menu
+            style={{
+              marginBottom: 'auto',
+            }}
+            onClick={handleMenuClick} selectedKeys={[activeTab]} mode="inline" className="custom-menu" theme={theme}
+            items={[
+              {
+                key: '4',
+                icon:
+                    <Progress
+                      size={[180,10]}
+                      percent={(user.storage_used / user.storage_quota) * 100}
+                      status="active"
+                      strokeColor={{ from: '#108ee9', to: '#87d068' }}
+                      format={() => `${formatBytes(user.storage_used)} / ${formatBytes(user.storage_quota)}`}
+                      style={{ fontSize: '12px' }}
+                    />
+                ,
+                title: 'User',
+                children: [
+                  {
+                    label: <span style={{ color: 'red' }}>Logout</span>,
+                    key: '5',
+                    icon: <LogoutOutlined style={{
+                      color: 'red',
+                    }} />,
+                    title: 'Logout',
+                    onClick: handleLogout,
+                  },
+                ],
+              },
+            ]}
+          >
+          </Menu>
         </div>
+        {/* <div className="user-info">
+          <Progress size={[200, 10]} percent={user.storage_used / user.storage_quota} status="active" strokeColor={{ from: '#108ee9', to: '#87d068' }} />
+          {user.storage_used / (1024 * 1024 * 1024)} / {user.storage_quota / (1024 * 1024 * 1024)} GB
+          <button onClick={handleLogout}>Logout</button>
+        </div> */}
       </div>
       {activeTab === "1" && (
         <div className="chonky">
@@ -382,7 +436,7 @@ const HomePage = () => {
       }
       <RightSidebar files={sidebarSelection} darkMode={theme} />
       <Toaster />
-      <FooterBar theme={theme} toggleTheme={toggleTheme} />
+      {/* <FooterBar theme={theme} toggleTheme={toggleTheme} /> */}
     </div>
   );
 };

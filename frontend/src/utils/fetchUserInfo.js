@@ -14,7 +14,7 @@ const fetchUserInfo = async (setPath, setSharedPath, setFolders, setUser) => {
     } else {
       setPath(res.data.username);
       setSharedPath(res.data.username);
-      setUser(res.data.username);
+      setUser(res.data);
       const firstFolder = {
         id: res.data.username,
         name: res.data.username,
