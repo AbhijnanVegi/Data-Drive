@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from models.file import File
 from models.job import Job, Status
 from storage.client import minio_client as mc
-from config import MIN_BANDWIDTH
+from config import settings
 
 
 def create_job(token: str, files: List[File], username=None, prefix=None):
@@ -45,7 +45,9 @@ def create_job(token: str, files: List[File], username=None, prefix=None):
     else:
         job.download_path = f"/tmp/{folder_name}/{os.path.basename(files[0].path)}"
 
-    job.exp_time = datetime.now() + timedelta(minutes=size / (60 * MIN_BANDWIDTH))
+    job.exp_time = datetime.now() + timedelta(
+        minutes=size / (60 * app_config.min_bandwidth)
+    )
     job.size = size
     job.status = Status.DONE
     job.progress = 100
