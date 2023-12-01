@@ -475,7 +475,6 @@ def unshare(
     Desc: Unshare the file specified by the path.
     """
     file = File.objects(path=path).first()
-    parent_usr = User.objects(username=parent_username).first()
     child_usr = User.objects(username=child_username).first()
 
     if file is None:

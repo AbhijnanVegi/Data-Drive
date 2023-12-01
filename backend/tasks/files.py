@@ -2,14 +2,13 @@ import os
 import pathlib
 import zipfile
 
-from fastapi import BackgroundTasks
-from typing import Optional, List
+from typing import List
 from datetime import datetime, timedelta
 
 from models.file import File
 from models.job import Job, Status
 from storage.client import minio_client as mc
-from config import settings
+from config import app_config
 
 
 def create_job(token: str, files: List[File], username=None, prefix=None):
