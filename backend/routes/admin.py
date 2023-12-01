@@ -1,7 +1,7 @@
 from typing import Annotated, List
 from pydantic import BaseModel
 from dynaconf.loaders.toml_loader import write
-from fastapi import APIRouter, Depends, HTTPException, Body, status
+from fastapi import APIRouter, Depends, HTTPException, Body
 
 from config import app_config
 from dependencies import get_admin, MessageResponse
