@@ -31,6 +31,7 @@ import {
   PieChartOutlined,
 } from '@ant-design/icons';
 import api from "../../utils/api";
+import {TransferFileModal} from "../components/TransferFileModal";
 
 
 setChonkyDefaults({ iconComponent: ChonkyIconFA });
@@ -56,6 +57,8 @@ const HomePage = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("1");
   const [isShareFolderModalOpen, setIsShareFolderModalOpen] = useState(false);
+  const [isCopyFilesModalOpen, setIsCopyFilesModalOpen] = useState(false);
+  const [isMoveFilesModalOpen, setIsMoveFilesModalOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([])
   const { Header, Footer, Sider, Content } = Layout;
   const [sidebarSelection, setSidebarSelection] = useState([]);
@@ -116,7 +119,65 @@ const HomePage = () => {
   const handleShareFolderModalCancel = () => {
     setIsShareFolderModalOpen(false);
   };
+  
+  const handleCopyFileFormSubmit = (values) => {
+    setIsCopyFilesModalOpen(false);
+    console.log("values", selectedFiles)
+    
+    selectedFiles.forEach(async (file) => {
+      var tempid = file.id;
+      if (tempid[tempid.length - 1] === "/") {
+        tempid = tempid.slice(0, -1);
+      }
+      const copyRequest = {
+        src_path: tempid,
+        dest_path: values.destinationpath
+      };
+      await api.post("/copy", copyRequest)
+        .then((response) => {
+          console.log(response);
+          notifySuccess(response.data.message);
+        })
+        .catch((error) => {
+          console.log(error);
+          notifyFailure(error.response.data.detail);
+        });
 
+    })
+  }
+  
+  const handleCopyFilesModalCancel = () => {
+    setIsCopyFilesModalOpen(false);
+  }
+  
+  const handleMoveFileFormSubmit = (values) => {  
+    setIsMoveFilesModalOpen(false);
+    console.log("values", selectedFiles)
+    
+    selectedFiles.forEach(async (file) => {
+        var tempid = file.id;
+        if (tempid[tempid.length - 1] === "/") {
+            tempid = tempid.slice(0, -1);
+        }
+        const moverequest = {
+            src_path: tempid,
+            dest_path: values.destinationpath
+        };
+        await api.post("/move", moverequest)
+            .then((response) => {
+            console.log(response);
+            notifySuccess(response.data.message);
+            })
+            .catch((error) => {
+            console.log(error);
+            notifyFailure(error.response.data.detail);
+            });
+    })
+  }
+  
+  const handleMoveFilesModalCancel = () => {
+      setIsMoveFilesModalOpen(false);
+  }
   const handleMenuClick = (e) => {
     setActiveTab(e.key);
     handleTabChange(e.key);
@@ -207,6 +268,16 @@ const HomePage = () => {
       setSelectedFiles(data.state.selectedFiles);
       setIsShareFolderModalOpen(true);
     }
+    if (data.id === "copy_files") {
+        console.log("copying files")
+        setSelectedFiles(data.state.selectedFiles);
+        setIsCopyFilesModalOpen(true);
+    }
+    if (data.id === "move_files") {
+        console.log("moving files")
+        setSelectedFiles(data.state.selectedFiles);
+        setIsMoveFilesModalOpen(true);
+    }
     if (data.id === "open_files") {
       const targetFile = data.payload.targetFile;
       if (targetFile.isDir) {
@@ -286,6 +357,8 @@ const HomePage = () => {
             <ShareFolderModal open={isShareFolderModalOpen} onCancel={handleShareFolderModalCancel} onSubmit={handleShareFolderFormSubmit} selectedFiles={selectedFiles} />
             <VideoModal open={isVideoModalOpen} onCancel={handleVideoModalCancel} activeVideo={activeVideo} />
             <PictureModal open={isPictureModalOpen} onCancel={handlePictureModalCancel} pictures={pictures} />
+            <TransferFileModal open={isCopyFilesModalOpen} onCancel={handleCopyFilesModalCancel} onSubmit={handleCopyFileFormSubmit} selectedFiles={selectedFiles} />
+            <TransferFileModal open={isMoveFilesModalOpen} onCancel={handleMoveFilesModalCancel} onSubmit={handleMoveFileFormSubmit} selectedFiles={selectedFiles} />
             <FullFileBrowser
               files={files}
               folderChain={folders}
