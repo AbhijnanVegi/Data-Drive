@@ -469,7 +469,7 @@ def copy(
             File(path=dest_path + file.path[len(parent_path):], size=file.size, owner=file.owner, public=dest_public,
                  is_dir=file.is_dir).save()
     else:
-        mc.copy_object("data-drive", dest_path + src_path[len(src_path):],
+        mc.copy_object("data-drive", dest_path + src_path[len(parent_path):],
                        minio.commonconfig.CopySource("data-drive", src_path))
         File(path=dest_path + src_file.path[len(parent_path):], size=src_file.size, owner=src_file.owner,
              public=src_file.public, is_dir=src_file.is_dir).save()
@@ -529,7 +529,7 @@ def move(
         return {"message": "File/folder moved successfully!"}
 
     else:
-        obj = mc.copy_object("data-drive", dest_path + src_path[len(src_path):],
+        obj = mc.copy_object("data-drive", dest_path + src_path[len(parent_path):],
                              minio.commonconfig.CopySource("data-drive", src_path))
         mc.remove_object("data-drive", src_path)
 
