@@ -65,6 +65,23 @@ async def upload_file(
         file: UploadFile,
         username: Annotated[str, Depends(get_auth_user)],
 ):
+    """
+    Upload a file to the specified path.
+
+    This function performs the following checks:  
+        - Check if the file already exists.  
+        - Check if the parent directory exists.  
+        - Check if the user has write permission for the parent directory.  
+    Then it uploads the file to the specified path to the minio server and creates a database entry for the file in the
+    mongo database. It also inherits the share permissions from the parent directory.
+
+    Parameters:  
+        - **path**: Path to upload the file to.  
+        - **file**: File to upload.  
+
+    Returns:  
+        - **message**: Message indicating whether the file was uploaded successfully or not.  
+    """
     fileObj = File.objects(path=path).first()
     if fileObj:
         return {"message": "File already exists!"}
@@ -116,6 +133,23 @@ def mkdir(
         data: Annotated[PathForm, Body(embed=True)],
         username: Annotated[str, Depends(get_auth_user)],
 ):
+    """
+    Create a directory at the specified path.
+
+    This function performs the following checks:  
+        - Check if the directory already exists.  
+        - Check if the parent directory exists.  
+        - Check if the user has write permission for the parent directory.  
+    Then it creates a directory at the specified path on the minio server and creates a database entry for the directory.
+    For directories, the minio server stores a dummy object with the name of the directory and a trailing underscore "_"
+    since minio does not support empty directories.
+
+    Parameters:  
+        - **path**: Path to create the directory at.
+
+    Returns:  
+        - **message**: Message indicating whether the directory was created successfully or not.
+    """
     directory = File.objects(path=data.path).first()
     if directory:
         return {"message": "Directory already exists!"}
@@ -138,6 +172,21 @@ def list(
         data: Annotated[PathForm, Body(embed=True)],
         username: Annotated[str, Depends(get_auth_user_optional)],
 ):
+    """
+    List the files in the specified directory.
+
+    This function performs the following checks:  
+        - Check if the directory exists.  
+        - Check if the user has read permission for the directory.  
+    Then it lists the files and folder in the specified directory on the minio server and their associated information
+    including the path, whether it is a directory, last modified time, size and metadata.
+
+    Parameters:  
+        - **path**: Path to list the files in.
+
+    Returns:  
+        - List of files and folders in the specified directory.
+    """
     directory = File.objects(path=data.path).first()
     if not directory or not directory.is_dir:
         raise HTTPException(
@@ -173,6 +222,23 @@ def delete(
         data: Annotated[PathForm, Body(embed=True)],
         username: Annotated[str, Depends(get_auth_user)],
 ):
+    """
+    Delete the file/folder specified by the path.
+
+    This function performs the following checks:  
+        - Check if the file/folder exists.  
+        - Check if user is trying to delete their home directory.  
+        - Check if the user has write permission for the file/folder.  
+    Then it deletes the file/folder specified by the path on the minio server and deletes the file database entries and
+    share database entries associated with the file/folder. If the file/folder is a directory, it also deletes all the
+    files and folders inside the directory.
+
+    Parameters:  
+        - **path**: Path to delete the file/folder at.
+
+    Returns:  
+        - **message**: Message indicating whether the file/folder was deleted successfully or not.
+    """
     file = File.objects(path=data.path).first()
     if not file:
         raise HTTPException(status_code=400, detail="File does not exist!")
@@ -213,6 +279,15 @@ def delete(
 
 @files_router.get("/get/<path:path>", response_class=FileResponse)
 def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)]):
+    """
+    Get the file specified by the path.
+
+    This function performs the following checks:  
+        - Check if the file exists.  
+        - Check if the path points to a file and not a directory.  
+        - Check if the user has read permission for the file.  
+    Then it gets the file specified by the path from the minio server and returns it.
+    """
     file = File.objects(path=path).first()
     if not file:
         raise HTTPException(status_code=400, detail="File does not exist!")
@@ -243,8 +318,21 @@ def share(
         child_username: Annotated[str, Body(embed=True)],
         perm: Annotated[Permission, Body(embed=True)] = Permission.READ,
 ):
-    file = File.objects(path=path).first()
+    """
+    Share the file specified by the path with the user specified by the username.
 
+    This function performs the following checks:  
+        - Check if the file exists.  
+        - Checks if the logged-in user is the owner of the file.  
+        - Checks if the logged-in user is not sharing with themselves.  
+
+    Then it creates a database entry for the share. While creating the share, it also checks if the user already has
+    an existing share for the file and updates the permission if the new permission is higher than the existing
+    permission.
+    """
+    file = File.objects(path=path).first()
+    
+    print(path)
     shared_list = []
 
     if not file:
@@ -267,7 +355,8 @@ def share(
             shared_file.save()
 
         else:
-            shared_file.permission = perm
+            if perm.value > shared_file.permission.value:
+                shared_file.permission = perm
             shared_file.save()
 
         shared_list.append(shared_file)
@@ -302,8 +391,10 @@ def get_shared_with(
         path: Annotated[str, Body(embed=True)] = None,
 ):
     """
-    Desc: List the shared files with the user, in the specified directory,
-    if no directory is specified, list all the shared files with the user.
+    Lists the files shared with the user.
+    
+    If the path is specified, it lists the files shared with the user inside the directory specified by the path.
+    Otherwise, it lists all the files explicitly shared with the user.
     """
 
     if username:
@@ -385,7 +476,7 @@ def get_shared_by(
         username: Annotated[str, Depends(get_auth_user_optional)],
 ):
     """
-    Desc: List the explicit shared files by the user.
+    Lists all the explicitly shared files/directories by the user.
     """
     if username is not None:
         user = User.objects(username=username).first()
@@ -419,7 +510,15 @@ def unshare(
         parent_username: Annotated[str, Depends(get_auth_user)],
 ):
     """
-    Desc: Unshare the file specified by the path.
+    Unshare the file specified by the path with the user specified by the username.
+    
+    This function performs the following checks:
+        - Check if the file exists.
+        - Check if the logged-in user is the owner of the file.
+        - Check if the file being pointed by the path is explicitly shared with the user.
+    
+    Then it deletes the share database entry for the file and all the files inside the directory if the file is a 
+    directory.
     """
     file = File.objects(path=path).first()
     parent_usr = User.objects(username=parent_username).first()
@@ -428,52 +527,93 @@ def unshare(
     if file is None:
         raise HTTPException(status_code=400, detail="File does not exist!")
     else:
-        shared_file = SharedFile.objects(file=file, user=child_usr).first()
-
-        if shared_file.explicit:
-            shared_file.delete()
-            return {"message": "File unshared successfully!"}
+        if file.owner != parent_usr:
+            raise HTTPException(
+                status_code=400, detail="You do not have permission to unshare this file!")
+        
+        if file.is_dir:
+            explicit_share = SharedFile.objects(file=file, user=child_usr, owner=parent_usr, explicit=True).first()
+            
+            if explicit_share is None:
+                raise HTTPException(
+                    status_code=400, detail="File is not explicitly shared with this user!")
+            else:
+                explicit_share.delete()
+                for _file in File.objects(path__startswith=path):
+                    shared_file = SharedFile.objects(file=_file, user=child_usr, explicit=False, owner=_file.owner).first()
+                    if shared_file is not None:
+                        shared_file.delete()
+                        
+                return {"message": "Files unshared successfully!"}
         else:
-            return {"message": "File is not explicitly shared, delete the parent share first!"}
+            shared_file = SharedFile.objects(file=file, user=child_usr, explicit=True).first()
+            if shared_file is None:
+                raise HTTPException(
+                    status_code=400, detail="File is not explicitly shared with this user!")
+            else:
+                shared_file.delete()
+                return {"message": "File unshared successfully!"}
 
 
 @files_router.post("/copy", response_model=MessageResponse)
 def copy(
         src_path: Annotated[str, Body(embed=True)],
         dest_path: Annotated[str, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user)],
 ):
     """
-    Desc: Move the file specified by the path.
+    Copies the file/folder specified by the src_path to the destination folder specified by the dest_path.
+    
+    This function performs the following checks:
+        - Check if the source file/folder exists.
+        - Check if the destination folder exists.
+        - Check if the destination is a directory.
+        - Check if the user has write permission for the destination folder.
+        - Check if the user has read permission for the source file/folder.
+        
+    Then it copies the file/folder specified by the src_path to the destination folder specified by the dest_path on the
+    minio server and creates a database entry for the file/folder in the mongo database. It also inherits the share
+    permissions from the parent directory.
+        
     """
+    usr = User.objects(username=username).first()
     src_file = File.objects(path=src_path).first()
     dest_file = File.objects(path=dest_path).first()
 
     parent_path = os.path.dirname(src_path)
 
+    print(src_path)
     if src_file is None:
         raise HTTPException(status_code=400, detail="Source file/folder does not exist!")
+    
+    if src_file.can_read(usr) is False:
+        raise HTTPException(status_code=400, detail="You do not have permission to access this file!")
 
     if dest_file is None:
         raise HTTPException(status_code=400, detail="Destination folder does not exist!")
     elif not dest_file.is_dir:
         raise HTTPException(status_code=400, detail="Destination is not a directory!")
-
+    
+    if dest_file.can_write(usr) is False:
+        raise HTTPException(status_code=400, detail="You do not have permission to write to the destination folder!")
+    
     if src_file.is_dir:
         dest_public = dest_file.public
 
         for obj in mc.list_objects("data-drive", prefix=src_path + "/", recursive=True):
             mc.copy_object("data-drive", dest_path + obj.object_name[len(parent_path):],
                            minio.commonconfig.CopySource("data-drive", obj.object_name))
-
+        
         for file in File.objects(path__startswith=src_path):
-            File(path=dest_path + file.path[len(parent_path):], size=file.size, owner=file.owner, public=dest_public,
+            File(path=dest_path + file.path[len(parent_path):], size=file.size, owner=dest_file.owner, public=dest_public,
                  is_dir=file.is_dir).save()
     else:
         mc.copy_object("data-drive", dest_path + src_path[len(parent_path):],
                        minio.commonconfig.CopySource("data-drive", src_path))
-        File(path=dest_path + src_file.path[len(parent_path):], size=src_file.size, owner=src_file.owner,
+        File(path=dest_path + src_file.path[len(parent_path):], size=src_file.size, owner=dest_file.owner,
              public=src_file.public, is_dir=src_file.is_dir).save()
-
+    
+    refresh_share_perms(dest_file.owner.username)
     return {"message": "File/folder copied successfully!"}
 
 
@@ -481,24 +621,41 @@ def copy(
 def move(
         src_path: Annotated[str, Body(embed=True)],
         dest_path: Annotated[str, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user)],
 ):
     """
-    Desc: Move the file specified by the path.
-    src_path : File/folder to be moved
-    dest_path : Destination folder (src_path will be moved to inside the folder pointed by dest_path)
+    Moves the file/folder specified by the src_path to the destination folder specified by the dest_path.
+    
+    This function performs the following checks:
+        - Check if the source file/folder exists.
+        - Check if the destination folder exists.
+        - Check if the destination is a directory.
+        - Check if the user has write permission for the destination folder.
+        - Check if the user has write permission for the source file/folder.
+        
+    Then it moves the file/folder specified by the src_path to the destination folder specified by the dest_path on the
+    minio server and updates the database entry for the file/folder in the mongo database. It also inherits the share
+    permissions from the parent directory of the destination folder.
     """
-
+    
+    usr = User.objects(username=username).first()
     src_file = File.objects(path=src_path).first()
     dest_file = File.objects(path=dest_path).first()
 
     parent_path = os.path.dirname(src_path)
-
+        
     if src_file is None:
         raise HTTPException(status_code=400, detail="Source file/folder does not exist!")
 
+    if src_file.can_write(usr) is False:
+        raise HTTPException(status_code=400, detail="You do not have permission to move this file!")
+
     if dest_file is None:
         raise HTTPException(status_code=400, detail="Destination folder does not exist!")
-
+    
+    if dest_file.can_write(usr) is False:
+        raise HTTPException(status_code=400, detail="You do not have permission to write to the destination folder!")
+    
     if not dest_file.is_dir:
         raise HTTPException(status_code=400, detail="Destination is not a directory!")
 
@@ -510,22 +667,24 @@ def move(
                            minio.commonconfig.CopySource("data-drive", obj.object_name))
             mc.remove_object("data-drive", obj.object_name)
 
-        to_move_share = File.objects(path=src_path).first()
-        users_to_move_for = []
-
-        for _share in SharedFile.objects(file=to_move_share):
-            if _share.explicit:
-                users_to_move_for.append(_share.user)
+        # to_move_share = File.objects(path=src_path).first()
+        # users_to_move_for = []
+        # 
+        # for _share in SharedFile.objects(file=to_move_share):
+        #     if _share.explicit:
+        #         users_to_move_for.append(_share.user)
 
         for file in File.objects(path__startswith=src_path):
-            shares = SharedFile.objects(file=file)
+            # shares = SharedFile.objects(file=file)
             file.path = dest_path + file.path[len(parent_path):]
+            file.owner = dest_file.owner
             file.public = dest_public
             file.save()
-            for _share in shares:
-                if _share.user not in users_to_move_for:
-                    _share.delete()
-
+            # for _share in shares:
+            #     if _share.user not in users_to_move_for:
+            #         _share.delete()
+        
+        refresh_share_perms(dest_file.owner.username)
         return {"message": "File/folder moved successfully!"}
 
     else:
@@ -535,13 +694,14 @@ def move(
 
         to_move_file = File.objects(path=src_path).first()
         to_move_file.path = dest_path + to_move_file.path[len(parent_path):]
+        to_move_file.owner = dest_file.owner
         to_move_file.public = dest_public
         to_move_file.save()
 
         for _share in SharedFile.objects(file=to_move_file):
-            if not _share.explicit:
-                _share.delete()
-
+            _share.delete()
+        
+        refresh_share_perms(dest_file.owner.username)
         return {"message": "File/folder moved successfully!"}
 
 
@@ -613,6 +773,16 @@ def mark_public(
         username: Annotated[str, Depends(get_auth_user)],
         perm: Annotated[Permission, Body(embed=True)] = Permission.READ,
 ):
+    """
+    Mark a file or directory as public. 
+    
+    This function performs the following checks:  
+        - Check if the file/dir exists.  
+        - Check if the user has write permission for the file/dir.  
+        
+    Then it marks the file/dir as public and updates the database entries for the file/dir and all the files/dirs inside
+    the directory if the file/dir is a directory.
+    """
     file = File.objects(path=path).first()
     if not file:
         raise HTTPException(status_code=400, detail="File/dir does not exist!")
@@ -620,7 +790,7 @@ def mark_public(
     user = User.objects(username=username).first()
     if not file.can_write(user):
         raise HTTPException(
-            status_code=400, detail="You do not have permission to access this file!"
+            status_code=400, detail="You do not have permission to make this file public!"
         )
 
     if file.is_dir:
@@ -636,12 +806,16 @@ def mark_public(
 
 def refresh_share_perms(username: str):
     """
-    Desc: When uploading a new file or making a change, call this to refresh the shares.
+    Refresh the share permissions for a user.
+    
+    For all the explicitly shared files/directories by the user, it updates the share permissions for the that share and
+    all the files/directories inside the directory if the file/directory is a directory.
     """
 
-    user = User.objects(usernname=username)
+    user = User.objects(username=username).first()
 
-    for explicit_share in SharedFile.objects(user=user, explicit=True):
+    for explicit_share in SharedFile.objects(owner=user, explicit=True):
+        
         for file in File.objects(path__startswith=explicit_share.file.path + '/'):
             existing_share = SharedFile.objects(user=explicit_share.user, file=file, explicit=False, owner=file.owner)
 

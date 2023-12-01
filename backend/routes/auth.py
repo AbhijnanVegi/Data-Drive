@@ -26,6 +26,15 @@ class RegisterForm(BaseModel):
 
 @auth_router.post("/register", response_model=MessageResponse)
 def register(data: Annotated[RegisterForm, Body(embed=True)]):
+    """
+    Register a new user.
+
+    - **username**: Username of the user.
+    - **email**: Email of the user.
+    - **password**: Password of the user.
+
+    Creates a new user with the given username, email and password and creates a home directory for the user.
+    """
     # Get user data from request
     username = data.username
     email = data.email
@@ -47,6 +56,14 @@ class Token(BaseModel):
 
 @auth_router.post("/login", response_model=Token)
 def login(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    """
+    Login a user.
+
+    - **username**: Username of the user.
+    - **password**: Password of the user.
+
+    Checks if the user exists and the password is correct and returns an access token.
+    """
     # Get user data from request
     username = data.username
     password = data.password
@@ -77,6 +94,13 @@ def login(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
 def logout(
         token: Annotated[str, Depends(oauth2_scheme)]
 ):
+    """
+    Handles logout of a user.
+
+    - **token**: Access token of the user.
+
+    Adds the access token to the invalid token database. So that the access token cannot be used again until it expires.
+    """
     if token is None:
         raise HTTPException(status_code=400, detail="Auth token is missing")
     try:
@@ -95,6 +119,9 @@ def logout(
 
 
 def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    """
+    Get the username of the user from the access token.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -116,6 +143,9 @@ class UserSession(BaseModel):
 
 @auth_router.get("/user", response_model=UserSession)
 def user(username: Annotated[UserSession, Depends(get_auth_user)]):
+    """
+    Get the username of the logged in user.
+    """
     return {"username": username}
 
 
@@ -126,5 +156,8 @@ class UserOut(BaseModel):
 
 @auth_router.get("/users", response_model=List[UserOut])
 def get_all_users():
+    """
+    Get a list of all users in the database.
+    """
     users = User.objects()
     return [{"username": user.username, "email": user.email} for user in users]
