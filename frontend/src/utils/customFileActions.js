@@ -61,10 +61,38 @@ const shareFiles = defineFileAction({
   },
 });
 
+const copyFiles = defineFileAction({
+  id: "copy_files",
+  requiresSelection: true,
+  hotkeys: ["ctrl+c"],
+  button: {
+    name: "Copy files",
+    toolbar: true,
+    contextMenu: true,
+    group: "Actions",
+    icon: ChonkyIconName.copy,
+  },
+});
+
+const moveFiles = defineFileAction({
+  id: "move_files",
+  requiresSelection: true,
+  hotkeys: ["ctrl+x"],
+  button: {
+    name: "Move files",
+    toolbar: true,
+    contextMenu: true,
+    group: "Actions",
+    icon: ChonkyIconName.copy,
+  },
+});
+
 export const customActions = [
   uploadFileAction,
   createFolderAction,
   downloadFiles,
   deleteFiles,
-  shareFiles
+  shareFiles,
+  copyFiles,
+  moveFiles,
 ];

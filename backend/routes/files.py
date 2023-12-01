@@ -492,7 +492,7 @@ def get_shared_with(
             raise HTTPException(status_code=400, detail="File does not exist!")
         else:
             shared_file = SharedFile.objects(
-                user=user, explicit=True, file=file
+                user=user, file=file
             ).first()
 
             if shared_file:
@@ -502,7 +502,7 @@ def get_shared_with(
                     ):
                         if obj.object_name[-1] == "_":
                             continue
-
+                        _shared_file = None
                         if obj.is_dir:
                             print(obj.object_name)
                             _shared_file = SharedFile.objects(
@@ -510,7 +510,6 @@ def get_shared_with(
                                 file=File.objects(path=obj.object_name[:-1]).first(),
                             ).first()
                         else:
-                            print(obj.object_name)
                             _shared_file = SharedFile.objects(
                                 user=user,
                                 file=File.objects(path=obj.object_name).first(),
@@ -944,11 +943,13 @@ def refresh_share_perms(username: str):
 
     for explicit_share in SharedFile.objects(owner=user, explicit=True):
         for file in File.objects(path__startswith=explicit_share.file.path + "/"):
+            print(file.path,explicit_share.user.username)
             existing_share = SharedFile.objects(
                 user=explicit_share.user, file=file, explicit=False, owner=file.owner
-            )
+            ).first()
 
-            if existing_share is None:
+            if existing_share == None:
+                print("Creating share", file.path, explicit_share.user.username, file.owner)
                 SharedFile(
                     file=file,
                     user=explicit_share.user,
