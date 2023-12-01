@@ -1,4 +1,4 @@
-from enum import Enum
+from datetime import datetime
 from mongoengine import (
     Document,
     StringField,
@@ -6,16 +6,11 @@ from mongoengine import (
     ReferenceField,
     EnumField,
     BooleanField,
-    BooleanField,
+    DateTimeField,
 )
 
+from models.common import Permission
 from models.user import User
-
-
-class Permission(Enum):
-    READ = "read"
-    WRITE = "write"
-    NONE = "none"
 
 
 class File(Document):
@@ -30,8 +25,10 @@ class File(Document):
     accessed by a user either when the user is not the owner of the file or the file is not explicitly shared with
     the user.
     """
+
     path = StringField(required=True, unique=True)
     size = IntField(required=True, default=0)
+    last_modified = DateTimeField(required=True, default=datetime.now)
     owner = ReferenceField(User, required=True)
     is_dir = BooleanField(required=True, default=False)
 
@@ -48,7 +45,7 @@ class File(Document):
         Get the access permission for a user for a file.
         """
         if self.owner == user:
-            return Permission.WRITE
+            return min(Permission.WRITE, user.permission)
 
         shared_file = SharedFile.objects(file=self, user=user).first()
         if shared_file:
@@ -68,6 +65,31 @@ class File(Document):
         """
         return self.get_permission(user) in [Permission.WRITE, Permission.READ]
 
+    def get_size(self):
+        if not self.is_dir:
+            return self.size
+
+        pipeline = [
+            {"$match": {"path": {"$regex": f"^{self.path}/"}}},
+            {"$group": {"_id": None, "size": {"$sum": "$size"}}},
+        ]
+
+        result = File.objects.aggregate(*pipeline)
+        return result.next()["size"]
+
+    def get_last_modified(self):
+        if not self.is_dir:
+            return self.last_modified
+
+        pipeline = [
+            {"$match": {"path": {"$regex": f"^{self.path}/"}}},
+            {"$sort": {"last_modified": -1}},
+            {"$limit": 1},
+        ]
+
+        result = File.objects.aggregate(*pipeline)
+        return result.next()["last_modified"]
+
 
 class SharedFile(Document):
     """
@@ -80,6 +102,7 @@ class SharedFile(Document):
     parent folder that is explicitly shared with
     the user.
     """
+
     file = ReferenceField(File, required=True)
     user = ReferenceField(User, required=True)
     permission = EnumField(Permission, required=True)

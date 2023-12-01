@@ -7,13 +7,24 @@ import { loadSlim } from "tsparticles-slim"; // if you are going to use `loadSli
 import { particlesConfig } from './particlesConfig';
 import { LoginForm } from '../components/LoginForm';
 import { SignupForm } from '../components/SignupForm';
+import toast, { Toaster } from "react-hot-toast";
+import api from '../../utils/api';
 
 
 const { TabPane } = Tabs;
 
 const LoginPage = () => {
     const [activeTab, setActiveTab] = useState('login');
-
+    const notifySuccess = (message) => {
+        toast.success(message, {
+            position: "bottom-center",
+        });
+    };
+    const notifyFailure = (message) => {
+        toast.error(message, {
+            position: "bottom-center",
+        });
+    };
     const particlesInit = useCallback(async engine => {
         console.log(engine);
         await loadSlim(engine);
@@ -43,20 +54,41 @@ const LoginPage = () => {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
-        })
-            .then((response) => {
-                console.log("response")
-                console.log(response.data.access_token)
+        }).then((response) => {
+            console.log("response")
+            console.log(response)
+            if(response.status === 200){
                 localStorage.setItem('token', response.data.access_token);
-                if (response.status === 200) {
-                    window.location.href = '/home';
-                }
-                else
-                    alert(response.data.message)
-            })
-            .catch((error) => {
-                alert("ERROR!")
-            });
+                axios('http://localhost:8000/auth/user', {
+                    method: "get",
+                    withCredentials: true,
+                    headers: {
+                        Authorization: `Bearer ${response.data.access_token}`,
+                    }
+                }).then((res) => {
+                    console.log("res",res.data)
+                    if(res.data.permission !== 0){
+                        window.location.href = "/home";
+                    }
+                    else{
+                        notifyFailure("You have been banned from the system")
+                    }
+                })
+                .catch((err) => {
+                    console.log(err);
+                });
+                // window.location.href = "/home";
+            }
+            else{
+                console.log("failed")
+                notifyFailure(response.data.detail);
+            }
+        }
+        ).catch((error) => {
+            console.log("error");
+            console.log(error.data.detail)
+        });
+            
     };
 
     const handleSignupSubmit = async (values) => {
@@ -72,6 +104,14 @@ const LoginPage = () => {
             .then((response) => {
                 console.log("response")
                 console.log(response)
+                if(response.status === 200){
+                notifySuccess("Signup Successful!");
+                setActiveTab('login');
+                }
+                else{
+                    console.log("failed")
+                    notifyFailure(response.data.detail);
+                }
             })
             .catch((error) => {
                 console.log("error");
@@ -120,6 +160,7 @@ const LoginPage = () => {
                         </TabPane>
                     </Tabs>
                 </div>
+                <Toaster />
             </div>
         </ConfigProvider>
     );

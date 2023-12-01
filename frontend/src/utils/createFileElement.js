@@ -21,9 +21,11 @@ const createFileElement = async (element) => {
         tempElement.ext = tempElement.name.split('.').pop();
     }
     if (isImage(tempElement)) {
-        const res = await api.get('/token/' + tempElement.id);
-        tempElement.thumbnailUrl = 'http://localhost:8000/download/' + res.data.token;
-        tempElement.token = res.data.token;
+        const res = await api.get(`/get/${tempElement.id}`, {
+            responseType: 'blob',
+        });
+        tempElement.thumbnailUrl = URL.createObjectURL(res.data);
+        
     }
     // return only if filename is not _
     if (tempElement.name !== '_') {

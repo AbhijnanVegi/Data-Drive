@@ -18,7 +18,7 @@ const isImage = (file) => ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg'].includes(f
  * @param {function} setPictures - The state setter function for pictures.
  * @returns {Promise<void>} - A promise that resolves when the files are fetched and the state is updated.
  */
-const fetchSharedFiles = async (path, setSharedFolders, setSharedFiles, setSharedPictures, ) => {
+const fetchSharedFiles = async (path, user, setSharedFolders, setSharedFiles, setSharedPictures, ) => {
     try {
         const sharedfolderChain = path.split('/').map((_, i, arr) => arr.slice(0, i + 1).join('/'));
         const tempFolderArray = sharedfolderChain.map((id, i) => ({
@@ -27,11 +27,24 @@ const fetchSharedFiles = async (path, setSharedFolders, setSharedFiles, setShare
             isOpenable: true,
             isDir: true,
         }));
+        // if more than one folder, insert the username folder at the beginning
+        if (tempFolderArray.length > 1) {
+            tempFolderArray.shift(1);
+            tempFolderArray.unshift({
+                id: user.username,
+                name: user.username,
+                isOpenable: true,
+                isDir: true,
+            });
+        }
+        
         console.log("tempFolderArray", tempFolderArray)
         setSharedFolders(tempFolderArray);
-
         const fileRequest = {
         };
+        if(path!==""){
+            fileRequest.path = path;
+        }
         const res = await api.post('/list_shared_with', fileRequest);
         // only use those files for which the responses are not null
         const tempFileArray = (await Promise.all(res.data.map(createFileElement))).filter(file => file !== null); console.log("tempFileArray sharedfiles", tempFileArray)

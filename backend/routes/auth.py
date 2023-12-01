@@ -3,11 +3,12 @@ from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException, Body, status
 from fastapi.security import OAuth2PasswordRequestForm
-from jose import JWTError, jwt
+from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr
 
-from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
-from dependencies import oauth2_scheme, get_auth_user, MessageResponse
+from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, app_config
+from dependencies import get_auth_user, MessageResponse, oauth2_scheme
+from models.common import Permission
 from models.user import User, InvalidToken
 from models.file import File
 
@@ -42,7 +43,13 @@ def register(data: Annotated[RegisterForm, Body(embed=True)]):
     if User.objects(email=email).first() or User.objects(username=username).first():
         raise HTTPException(status_code=400, detail="User already exists")
 
-    user = User(username=username, email=email, password=data.password).save()
+    user = User(
+        username=username,
+        email=email,
+        password=data.password,
+        storage_quota=app_config.default_user_quota,
+        permission=Permission(app_config.default_user_permission),
+    ).save()
 
     # Create home directory for user
     File(path=username, size=0, owner=user, is_dir=True).save()
@@ -81,6 +88,7 @@ def login(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     access_token = jwt.encode(
         {
             "username": str(user.username),
+            "admin": user.admin,
             "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         },
         SECRET_KEY,
@@ -91,9 +99,7 @@ def login(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
 
 
 @auth_router.post("/logout", response_model=MessageResponse)
-def logout(
-        token: Annotated[str, Depends(oauth2_scheme)]
-):
+def logout(token: Annotated[str, Depends(oauth2_scheme)]):
     """
     Handles logout of a user.
 
@@ -139,14 +145,25 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 
 class UserSession(BaseModel):
     username: str | None
+    admin: bool | None
+    permission: int | None
+    storage_quota: int | None
+    storage_used: int | None
 
 
 @auth_router.get("/user", response_model=UserSession)
 def user(username: Annotated[UserSession, Depends(get_auth_user)]):
     """
-    Get the username of the logged in user.
+    Returns the username, privilege level, storage quota and storage used of the user.
     """
-    return {"username": username}
+    user = User.objects(username=username).first()
+    return {
+        "username": username,
+        "admin": user.admin,
+        "permission": user.permission.value,
+        "storage_quota": user.storage_quota,
+        "storage_used": user.storage_used,
+    }
 
 
 class UserOut(BaseModel):

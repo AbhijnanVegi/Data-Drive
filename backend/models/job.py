@@ -30,6 +30,7 @@ class Job(Document):
     Exp_time : Time when the job will expire and can be cleaned up.
 
     """
+
     token = StringField(required=True, unique=True)
     progress = IntField(required=True, default=0)
     status = EnumField(Status, required=True, default=Status.PENDING)

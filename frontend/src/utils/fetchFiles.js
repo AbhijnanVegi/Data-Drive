@@ -38,7 +38,7 @@ const fetchFiles = async (path, setFolders, setFiles, setPictures) => {
 
         const tempPictures = tempFileArray
             .filter(isImage)
-            .map((element) => element.token);
+            .map((element) => element.id);
         setPictures(tempPictures);
     } catch (err) {
         console.error(err);
