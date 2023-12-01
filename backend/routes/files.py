@@ -27,7 +27,7 @@ from models.file import Permission
 from models.job import Job, Status
 
 from storage.client import minio_client as mc
-from tasks.files import create_job
+from tasks.files import create_job, clean_expired_jobs
 
 files_router = APIRouter(
     prefix="",
@@ -102,7 +102,7 @@ async def upload_file(
         shares = SharedFile.objects(file=directory)
         for share in shares:
             SharedFile(file=file, user=share.user,
-                       permission=share.permission).save()
+                       permission=share.permission, owner=share.owner).save()
 
         return {"message": "File uploaded successfully!"}
 
@@ -243,7 +243,6 @@ def share(
         child_username: Annotated[str, Body(embed=True)],
         perm: Annotated[Permission, Body(embed=True)] = Permission.READ,
 ):
-
     file = File.objects(path=path).first()
 
     shared_list = []
@@ -264,7 +263,7 @@ def share(
 
         if shared_file is None:
             shared_file = SharedFile(file=file, user=child_usr, permission=perm,
-                       owner=parent_usr, explicit=True)
+                                     owner=parent_usr, explicit=True)
             shared_file.save()
 
         else:
@@ -289,7 +288,7 @@ def share(
                     shared_file.save()
             else:
                 shared_file = SharedFile(file=file, user=child_usr,
-                           permission=perm, explicit=False, owner=parent_usr)
+                                         permission=perm, explicit=False, owner=parent_usr)
                 shared_file.save()
 
             shared_list.append(shared_file)
@@ -548,6 +547,7 @@ def download_file(
         username: Annotated[str, Depends(get_auth_user_optional)],
         background_tasks: BackgroundTasks,
 ):
+    background_tasks.add_task(clean_expired_jobs)
     file = File.objects(path=path).first()
     if not file:
         raise HTTPException(status_code=400, detail="File does not exist!")
@@ -598,8 +598,20 @@ def download(token: str):
 
     return job.download_path
 
+
 def refresh_share_perms(username: str):
     """
     Desc: When uploading a new file or making a change, call this to refresh the shares.
     """
+
+    user = User.objects(usernname=username)
+
+    for explicit_share in SharedFile.objects(user=user, explicit=True):
+        for file in File.objects(path__startswith=explicit_share.file.path + '/'):
+            existing_share = SharedFile.objects(user=explicit_share.user, file=file, explicit=False, owner=file.owner)
+
+            if existing_share is None:
+                SharedFile(file=file, user=explicit_share.user, permission=explicit_share.permission,
+                           explicit=False, owner=file.owner).save()
+
 

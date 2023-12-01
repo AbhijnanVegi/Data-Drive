@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr
 
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from dependencies import oauth2_scheme, get_auth_user, MessageResponse
-from models.user import User
+from models.user import User, InvalidToken
 from models.file import File
 
 auth_router = APIRouter(
@@ -73,6 +73,27 @@ def login(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@auth_router.post("/logout", response_model=MessageResponse)
+def logout(
+        token: Annotated[str, Depends(oauth2_scheme)]
+):
+    if token is None:
+        raise HTTPException(status_code=400, detail="Auth token is missing")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        exp = payload.get("exp")
+        exp = datetime.fromtimestamp(exp)
+        username = payload.get("username")
+        if username is None or exp is None:
+            raise HTTPException(status_code=400, detail="Invalid token")
+        if InvalidToken.objects(token=token).first() is None:
+            InvalidToken(token=token, exp=exp).save()
+
+        return {"message": "Logged out successfully!"}
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Invalid token")
+
+
 def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -97,9 +118,11 @@ class UserSession(BaseModel):
 def user(username: Annotated[UserSession, Depends(get_auth_user)]):
     return {"username": username}
 
+
 class UserOut(BaseModel):
     username: str
     email: EmailStr
+
 
 @auth_router.get("/users", response_model=List[UserOut])
 def get_all_users():

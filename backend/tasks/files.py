@@ -51,3 +51,18 @@ def create_job(token: str, files: List[File], username=None, prefix=None):
     job.status = Status.DONE
     job.progress = 100
     job.save()
+
+
+def clean_expired_jobs():
+    jobs = Job.objects(exp_time__lte=datetime.now(), status=Status.DONE)
+
+    for job in jobs:
+        job.expired = True
+        job.save()
+        if os.path.exists(job.download_path):
+            os.remove(job.download_path)
+        if os.path.exists(f"/tmp/{job.token}"):
+            # forcefully remove directory
+            os.system(f"rm -rf /tmp/{job.token}")
+
+        job.delete()

@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
-
+from models.user import InvalidToken
 from config import SECRET_KEY, ALGORITHM
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -24,6 +24,13 @@ def decode_jwt(token: str):
 
 
 def get_auth_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    if InvalidToken.objects(token=token).first() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No user logged in!",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     payload = decode_jwt(token)
     username: str = payload.get("username")
     exp: datetime = payload.get("exp")
@@ -37,6 +44,13 @@ def get_auth_user(token: Annotated[str, Depends(oauth2_scheme)]):
 
 
 def get_auth_user_optional(token: Annotated[str, Depends(oauth2_scheme)]):
+    if InvalidToken.objects(token=token).first() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No user logged in!",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     payload = decode_jwt(token)
     username: str = payload.get("username")
     exp: datetime = payload.get("exp")
