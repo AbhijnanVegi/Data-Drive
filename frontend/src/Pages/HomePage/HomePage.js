@@ -249,7 +249,7 @@ const HomePage = () => {
       if (numFiles === 1) {
         console.log("downloading file", data.state.selectedFiles[0].id)
         var downloadpath = data.state.selectedFiles[0].id;
-        downloadFile(downloadpath);
+        downloadFile(downloadpath, notifyFailure);
       }
     }
     if (data.id === "delete_files") {

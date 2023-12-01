@@ -2,7 +2,7 @@
 max-preview-size = 10980920
 min-bandwidth = 3533931
 default-user-quota = 54818350226
-default-user-permission = 1
+default-user-permission = 2
 allowed-file-extensions = [
     ".png",
     ".jpg",

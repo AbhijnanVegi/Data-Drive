@@ -59,7 +59,13 @@ const LoginPage = () => {
             console.log(response)
             if(response.status === 200){
                 localStorage.setItem('token', response.data.access_token);
-                api.get("/auth/user").then((res) => {
+                axios('http://localhost:8000/auth/user', {
+                    method: "get",
+                    withCredentials: true,
+                    headers: {
+                        Authorization: `Bearer ${response.data.access_token}`,
+                    }
+                }).then((res) => {
                     console.log("res",res.data)
                     if(res.data.permission !== 0){
                         window.location.href = "/home";

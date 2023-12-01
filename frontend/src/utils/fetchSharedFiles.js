@@ -31,8 +31,8 @@ const fetchSharedFiles = async (path, user, setSharedFolders, setSharedFiles, se
         if (tempFolderArray.length > 1) {
             tempFolderArray.shift(1);
             tempFolderArray.unshift({
-                id: user,
-                name: user,
+                id: user.username,
+                name: user.username,
                 isOpenable: true,
                 isDir: true,
             });

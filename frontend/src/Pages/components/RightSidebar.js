@@ -71,9 +71,10 @@ export const RightSidebar = ({ files, darkMode }) => {
     const targetFile = files[0];
     if (targetFile.isDir) {
       const owner = targetFile.id.split('/')[0];
-      // strip the trailing slash
-      var size, modDate;
-      const path = targetFile.id.slice(0, -1);
+      var path = targetFile.id;
+      if (path[path.length - 1] === '/') {
+        path = path.slice(0, -1);
+      }
       api.get('/du/' + path).then((res) => {
         console.log("res",res.data)
         setFolderSize(res.data.size);

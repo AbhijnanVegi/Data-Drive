@@ -1,7 +1,7 @@
 // fileDownloader.js
 import api from "./api";
 
-export const downloadFile = (filePath) => {
+export const downloadFile = (filePath, notifyFailure) => {
   if (filePath[filePath.length - 1] === "/") {
     filePath = filePath.slice(0, -1);
   }
@@ -9,22 +9,37 @@ export const downloadFile = (filePath) => {
     withCredentials: true,
   })
     .then((res) => {
-      fetch(`http://localhost:8000/download/${res.data.token}`)
-        .then(response => response.blob())
-        .then(blob => {
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          const fileName = filePath.split('/').pop(); // Extract file name from download path
-          link.setAttribute('download', fileName); // Use the actual file name here
-          link.style.display = 'none'; // Ensure the link element is not visible
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        })
-        .catch((error) => {
-          console.log(error);
+      const token = res.data.token;
+      const interval = setInterval(() => {
+        api.get("/status/" + res.data.token, {
+          withCredentials: true,
+        }).then((res) => {
+          if (res.data.status === "done") {
+            clearInterval(interval);
+            // window.open("http://localhost:8000/download/" + token);
+            fetch(`http://localhost:8000/download/${token}`)
+              .then(response => response.blob())
+              .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                const fileName = filePath.split('/').pop(); // Extract file name from download path
+                link.setAttribute('download', fileName); // Use the actual file name here
+                link.style.display = 'none'; // Ensure the link element is not visible
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              })
+              .catch((error) => {
+                console.log(error);
+              });
+          } else if (res.data.status === "failed") {
+            notifyFailure("Download failed");
+          }
+        }).catch((err) => {
+          console.log(err);
         });
+      }, 1000);
     })
     .catch((err) => {
       console.log(err);
