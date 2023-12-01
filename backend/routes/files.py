@@ -459,12 +459,14 @@ def copy(
         raise HTTPException(status_code=400, detail="Destination is not a directory!")
 
     if src_file.is_dir:
+        dest_public = dest_file.public
+
         for obj in mc.list_objects("data-drive", prefix=src_path + "/", recursive=True):
             mc.copy_object("data-drive", dest_path + obj.object_name[len(parent_path):],
                            minio.commonconfig.CopySource("data-drive", obj.object_name))
 
         for file in File.objects(path__startswith=src_path):
-            File(path=dest_path + file.path[len(parent_path):], size=file.size, owner=file.owner, public=file.public,
+            File(path=dest_path + file.path[len(parent_path):], size=file.size, owner=file.owner, public=dest_public,
                  is_dir=file.is_dir).save()
     else:
         mc.copy_object("data-drive", dest_path + src_path[len(src_path):],
@@ -500,6 +502,8 @@ def move(
     if not dest_file.is_dir:
         raise HTTPException(status_code=400, detail="Destination is not a directory!")
 
+    dest_public = dest_file.public
+
     if src_file.is_dir:
         for obj in mc.list_objects("data-drive", prefix=src_path + "/", recursive=True):
             mc.copy_object("data-drive", dest_path + obj.object_name[len(parent_path):],
@@ -516,6 +520,7 @@ def move(
         for file in File.objects(path__startswith=src_path):
             shares = SharedFile.objects(file=file)
             file.path = dest_path + file.path[len(parent_path):]
+            file.public = dest_public
             file.save()
             for _share in shares:
                 if _share.user not in users_to_move_for:
@@ -530,6 +535,9 @@ def move(
 
         to_move_file = File.objects(path=src_path).first()
         to_move_file.path = dest_path + to_move_file.path[len(parent_path):]
+        to_move_file.public = dest_public
+        to_move_file.save()
+
         for _share in SharedFile.objects(file=to_move_file):
             if not _share.explicit:
                 _share.delete()
@@ -599,6 +607,33 @@ def download(token: str):
     return job.download_path
 
 
+@files_router.post("/mark_public", response_model=MessageResponse)
+def mark_public(
+        path: Annotated[str, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user)],
+        perm: Annotated[Permission, Body(embed=True)] = Permission.READ,
+):
+    file = File.objects(path=path).first()
+    if not file:
+        raise HTTPException(status_code=400, detail="File/dir does not exist!")
+
+    user = User.objects(username=username).first()
+    if not file.can_write(user):
+        raise HTTPException(
+            status_code=400, detail="You do not have permission to access this file!"
+        )
+
+    if file.is_dir:
+        for _file in File.objects(path__startswith=path):
+            _file.public = perm
+            _file.save()
+    else:
+        file.public = perm
+        file.save()
+
+    return {"message": "File marked public successfully!"}
+
+
 def refresh_share_perms(username: str):
     """
     Desc: When uploading a new file or making a change, call this to refresh the shares.
@@ -613,5 +648,3 @@ def refresh_share_perms(username: str):
             if existing_share is None:
                 SharedFile(file=file, user=explicit_share.user, permission=explicit_share.permission,
                            explicit=False, owner=file.owner).save()
-
-
