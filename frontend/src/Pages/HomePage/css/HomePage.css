@@ -30,10 +30,19 @@
 }
 
 [data-theme="dark"] .ant-menu-sub {
-  background-color: #323232 !important; 
+  background-color: #323232 !important;
   color: #fff;
 }
 
+/* if data-theme is dark then change background color to grey of anything which starts or has antd */
+[data-theme="dark"] [class*=' ant'] {
+  background-color: #424242;
+  color: #fff;
+}
+[data-theme="dark"] [class^='ant'] {
+  background-color: #424242;
+  color: #fff;
+}
 
 
 .chonky {
@@ -104,6 +113,7 @@
 .theme-toggle-button:hover {
   background-color: rgba(0, 0, 0, 0.1);
 }
+
 .footer {
   position: fixed;
   bottom: 0;
@@ -126,6 +136,9 @@
 }
 
 .centered-opaque-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -148,9 +161,42 @@
   /* Adjust as needed */
 }
 
-.ant-menu-dark{
+.ant-menu-dark {
   background-color: #424242;
-  color : #fff;
+  color: #fff;
 }
 
+.user-info {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+  font-size: 0.8em;
+}
 
+.user-info p {
+  margin: 0;
+  padding: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.user-info button {
+  margin-top: 10px;
+  padding: 5px 10px;
+  font-size: 16px;
+  color: #fff;
+  background: #007bff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.sharedby {
+  height: 100vh;
+  width: 100vw;
+  font-size: 20px;
+  font-weight: bold;
+  z-index: 100;
+}

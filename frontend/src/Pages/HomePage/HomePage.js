@@ -21,6 +21,8 @@ import { Layout } from 'antd';
 import { Menu } from 'antd';
 import { RightSidebar } from "../components/RightSidebar";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { fetchSharedByData } from "../../utils/fetchSharedByData";
+import SharedByTable from "../components/SharedByTable";
 import {
   AppstoreOutlined,
   ContainerOutlined,
@@ -59,6 +61,8 @@ const HomePage = () => {
   const [selectedFiles, setSelectedFiles] = useState([])
   const { Header, Footer, Sider, Content } = Layout;
   const [sidebarSelection, setSidebarSelection] = useState([]);
+  const [user, setUser] = useState(null);
+  const [sharedByData, setSharedByData] = useState([]);
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
@@ -73,6 +77,23 @@ const HomePage = () => {
       position: "bottom-center",
     });
   };
+  const handleUnshare = (id, child_username) => {
+    console.log("unsharing", id)
+    const unshareRequest = {
+      "path": id,
+      "child_username": child_username
+    };
+    api.post("/unshare", unshareRequest)
+      .then((response) => {
+        console.log(response);
+        notifySuccess(response.data.message);
+        fetchSharedByData(setSharedByData);
+      })
+      .catch((error) => {
+        console.log(error);
+        notifyFailure(error.response.data.detail);
+      });
+  }
   const showModal = () => {
     setIsCreateFolderModalOpen(true);
   };
@@ -157,7 +178,7 @@ const HomePage = () => {
   };
 
   useEffect(() => {
-    fetchUserInfo(setPath, setSharedPath, setFolders);
+    fetchUserInfo(setPath, setSharedPath, setFolders, setUser);
   }, []);
   useEffect(() => {
     if (path !== null && activeTab === "1")
@@ -165,10 +186,25 @@ const HomePage = () => {
   }, [path, activeTab]);
   useEffect(() => {
     if (sharedpath !== null && activeTab === "2") {
-      fetchSharedFiles(sharedpath, setSharedFolders, setSharedFiles, setSharedPictures);
-      console.log("sharefiles", sharedfiles)
+      console.log("sharedpath inside useEffect", sharedpath)
+      fetchSharedFiles(sharedpath, user, setSharedFolders, setSharedFiles, setSharedPictures);
+      console.log("sharefiles is now lmao", sharedfiles)
     }
   }, [sharedpath, activeTab]);
+  useEffect(() => {
+    console.log("sharedpath just changed to", sharedpath)
+  }, [sharedpath])
+  useEffect(() => {
+    if (activeTab === "3") {
+      fetchSharedByData(setSharedByData);
+    }
+  }, [activeTab])
+
+  useEffect(() => {
+    console.log("sharedByData", sharedByData)
+  }, [sharedByData])
+
+
   const handleAction = useCallback((data) => {
     console.log("File action data:", data);
     if (data.id === "upload") {
@@ -215,15 +251,16 @@ const HomePage = () => {
     }
     if (data.id === "open_files") {
       const targetFile = data.payload.targetFile;
+      console.log("active tab", activeTab)
       if (targetFile.isDir) {
         console.log("opening directory", activeTab)
         if (activeTab === "1")
           openDirectory(targetFile, setPath);
-        else
-        {
+        else {
           console.log("opening shared folder")
           console.log("targetFile", targetFile)
           openDirectory(targetFile, setSharedPath);
+          console.log("path is now", path)
           console.log("shared path is now", sharedpath)
         }
       } else {
@@ -247,7 +284,7 @@ const HomePage = () => {
       setSidebarSelection(data.state.selectedFiles);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, files, pictures]);
+  }, [path, files, pictures, activeTab]);
   const handleTabChange = (key) => {
     setLoading(true);
     setTimeout(() => {
@@ -258,10 +295,16 @@ const HomePage = () => {
     backgroundColor: '#424242',
     color: '#fff',
   } : {};
+  const handleLogout = () => {
+    // Remove the user's data from local storage or cookies
+    localStorage.removeItem('user');
+    // Redirect the user to the login page
+    window.location.href = '/';
+  };
   return (
     <div className="full-page" data-theme={theme} >
       <div className="menu-container" style={menuStyle} >
-        <h1>Data-Drive</h1>
+        <h1>DataDrive</h1>
         <Menu onClick={handleMenuClick} selectedKeys={[activeTab]} mode="inline" className="custom-menu" theme={theme}
           items={[
             {
@@ -293,6 +336,10 @@ const HomePage = () => {
           ]}
         >
         </Menu>
+        <div className="user-info">
+          <p>{user}</p>
+          <button onClick={handleLogout}>Logout</button>
+        </div>
       </div>
       {activeTab === "1" && (
         <div className="chonky">
@@ -326,6 +373,13 @@ const HomePage = () => {
             /></Spin>
         </div>
       )}
+      {
+        activeTab === "3" && (
+          <div className="sharedby">
+            <SharedByTable data={sharedByData} onUnshare={handleUnshare} />
+          </div>
+        )
+      }
       <RightSidebar files={sidebarSelection} darkMode={theme} />
       <Toaster />
       <FooterBar theme={theme} toggleTheme={toggleTheme} />

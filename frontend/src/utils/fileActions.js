@@ -68,6 +68,7 @@ export const openDirectory = (targetFile, setPath) => {
   if (newPath[newPath.length - 1] === "/") {
     newPath = newPath.slice(0, -1);
   }
+  console.log("newPath: ", newPath)
   setPath(newPath);
 };
 
