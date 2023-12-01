@@ -181,7 +181,7 @@ class DuResponse(BaseModel):
     last_modified: datetime | None
 
 
-@files_router.get("/du/<path:path>", response_model=DuResponse)
+@files_router.get("/du/{path:path}", response_model=DuResponse)
 def du(
     path: str,
     username: Annotated[str, Depends(get_auth_user_optional)],
@@ -250,7 +250,7 @@ def delete(
         return {"message": "File deleted successfully!"}
 
 
-@files_router.get("/get/<path:path>", response_class=FileResponse)
+@files_router.get("/get/{path:path}", response_class=FileResponse)
 def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)]):
     file = File.objects(path=path).first()
     if not file:

@@ -1,6 +1,8 @@
 // PictureCarousel.js
 import { Carousel } from "react-responsive-carousel";
 import "react-responsive-carousel/lib/styles/carousel.min.css";
+import api from "../../utils/api";
+import { useState, useEffect } from "react";
 const indicatorStyles = {
     background: "#222222",
     width: 8,
@@ -10,45 +12,60 @@ const indicatorStyles = {
 };
 
 
-export const PictureCarousel = ({ pictures }) => (
-    <div id="carousel-div">
-        <Carousel
-            width="700px"
-            height="500px"
-            infiniteLoop={true}
-            renderIndicator={(onClickHandler, isSelected, index, label) => {
-                if (isSelected) {
+export const PictureCarousel = ({ pictures }) => {
+    const [imageBlobs, setImageBlobs] = useState([]);
+
+    useEffect(() => {
+        console.log("trying to fetch pictures")
+        Promise.all(pictures.map(picture =>
+            api.get(`/get/${picture}`, { responseType: 'blob' })
+                .then(res => URL.createObjectURL(res.data))
+                .catch(err => console.error(err))
+        ))
+            .then(blobURLs => {
+                setImageBlobs(blobURLs);
+            });
+    }, [pictures]);
+
+    return (
+        <div id="carousel-div">
+            <Carousel
+                width="700px"
+                height="500px"
+                infiniteLoop={true}
+                renderIndicator={(onClickHandler, isSelected, index, label) => {
+                    if (isSelected) {
+                        return (
+                            <li
+                                style={{ ...indicatorStyles, background: "#5f676a" }}
+                                aria-label={`Selected: ${label} ${index + 1}`}
+                                title={`Selected: ${label} ${index + 1}`}
+                            />
+                        );
+                    }
                     return (
                         <li
-                            style={{ ...indicatorStyles, background: "#5f676a" }}
-                            aria-label={`Selected: ${label} ${index + 1}`}
-                            title={`Selected: ${label} ${index + 1}`}
+                            style={indicatorStyles}
+                            onClick={onClickHandler}
+                            onKeyDown={onClickHandler}
+                            value={index}
+                            key={index}
+                            role="button"
+                            tabIndex={0}
+                            title={`${label} ${index + 1}`}
+                            aria-label={`${label} ${index + 1}`}
                         />
                     );
+                }}
+            >
+                {
+                    imageBlobs.map((blob, index) => (
+                        <div key={index}>
+                            <img src={blob} alt={pictures[index]} />
+                        </div>
+                    ))
                 }
-                return (
-                    <li
-                        style={indicatorStyles}
-                        onClick={onClickHandler}
-                        onKeyDown={onClickHandler}
-                        value={index}
-                        key={index}
-                        role="button"
-                        tabIndex={0}
-                        title={`${label} ${index + 1}`}
-                        aria-label={`${label} ${index + 1}`}
-                    />
-                );
-            }}
-        >
-            {pictures.map((picture) => {
-                return (
-                    <div key={picture}>
-                        <img src={"http://localhost:8000/download/" + picture} />
-                        <p className="legend">{picture}</p>
-                    </div>
-                );
-            })}
-        </Carousel>
-    </div>
-);
+            </Carousel>
+        </div>
+    )
+}

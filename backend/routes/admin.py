@@ -20,6 +20,7 @@ class Stats(BaseModel):
     permission: int
     storage_quota: int
     storage_used: int
+    admin: bool
 
 
 @admin_router.get("/users", response_model=List[Stats])
@@ -33,6 +34,7 @@ def stats(admin: Annotated[bool, Depends(get_admin)]):
                 permission=user.permission.value,
                 storage_quota=user.storage_quota,
                 storage_used=user.storage_used,
+                admin = user.admin
             )
         )
     return users

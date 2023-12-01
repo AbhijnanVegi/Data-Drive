@@ -73,10 +73,12 @@ export const openDirectory = (targetFile, setPath) => {
 };
 
 export const openImage = (targetFile, pictures, setPictures, setIsPictureModalOpen) => {
+  console.log("pictures", pictures)
   const json = JSON.stringify(pictures);
   const loadjson = JSON.parse(json);
   const index = loadjson.indexOf(targetFile.id);
   const newPictures = loadjson.slice(index).concat(loadjson.slice(0, index));
+  console.log("newPictures", newPictures)
   setPictures(newPictures);
   setIsPictureModalOpen(true);
 };
@@ -113,3 +115,20 @@ export const openOtherFile = (targetFile) => {
       console.log(err);
     });
 };
+
+export const openMarkdown = (targetFile, setMarkdown, setIsMarkdownModalOpen) => {
+  let downloadpath = targetFile.id;
+  if (downloadpath[downloadpath.length - 1] === "/") {
+    downloadpath = downloadpath.slice(0, -1);
+  }
+  api.get("/get/" + downloadpath, {
+    withCredentials: true,
+  })
+    .then((res) => {
+      setMarkdown(res.data);
+      setIsMarkdownModalOpen(true);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+}
