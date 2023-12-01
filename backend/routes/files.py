@@ -19,8 +19,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from minio.deleteobjects import DeleteObject
 
-from config import MAX_PREVIEW_SIZE, MIN_BANDWIDTH
 from dependencies import get_auth_user, get_auth_user_optional, MessageResponse
+from config import app_config
 from models.user import User
 from models.file import File, SharedFile
 from models.common import Permission
@@ -76,6 +76,11 @@ async def upload_file(
     user = User.objects(username=username).first()
     if not directory.can_write(user):
         return {"message": "You do not have permission to upload to this directory!"}
+
+    file_ext = os.path.splitext(file.filename)[1]
+    ALLOWED_FILE_EXTENSIONS = app_config.allowed_file_extensions
+    if ALLOWED_FILE_EXTENSIONS and file_ext not in ALLOWED_FILE_EXTENSIONS:
+        return {"message": "File type not allowed!"}
 
     content_type = mimetypes.guess_type(path)[0]
     if content_type is None:
@@ -170,9 +175,11 @@ def list(
 
     return objJSON
 
+
 class DuResponse(BaseModel):
     size: int
     last_modified: datetime | None
+
 
 @files_router.get("/du/<path:path>", response_model=DuResponse)
 def du(
@@ -193,7 +200,10 @@ def du(
             detail="You do not have permission to access this directory!",
         )
 
-    return {"size": directory.get_size(), "last_modified": directory.get_last_modified()}
+    return {
+        "size": directory.get_size(),
+        "last_modified": directory.get_last_modified(),
+    }
 
 
 @files_router.post("/delete", response_model=MessageResponse)
@@ -248,6 +258,12 @@ def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)
 
     if file.is_dir:
         raise HTTPException(status_code=400, detail="Cannot preview a directory!")
+
+    if file.size > app_config.max_preview_size:
+        raise HTTPException(
+            status_code=400,
+            detail="File size exceeds maximum preview size!",
+        )
 
     user = None
     if username:
@@ -669,7 +685,9 @@ def download(token: str):
         raise HTTPException(status_code=400, detail="Job not done yet!")
 
     job.expired = True
-    job.exp_time = datetime.now() + timedelta(minutes=job.size / (60 * MIN_BANDWIDTH))
+    job.exp_time = datetime.now() + timedelta(
+        minutes=job.size / (60 * app_config.min_bandwidth)
+    )
     job.save()
 
     return job.download_path

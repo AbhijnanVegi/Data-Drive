@@ -6,13 +6,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr
 
-from config import (
-    SECRET_KEY,
-    ALGORITHM,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    DEFAULT_USER_QUOTA,
-)
+from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, app_config
 from dependencies import oauth2_scheme, get_auth_user, MessageResponse
+from models.common import Permission
 from models.user import User
 from models.file import File
 
@@ -42,7 +38,8 @@ def register(data: Annotated[RegisterForm, Body(embed=True)]):
         username=username,
         email=email,
         password=data.password,
-        storage_quota=DEFAULT_USER_QUOTA,
+        storage_quota=app_config.default_storage_quota,
+        permission=app_config.default_user_permission,
     ).save()
 
     # Create home directory for user

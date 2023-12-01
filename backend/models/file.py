@@ -6,7 +6,7 @@ from mongoengine import (
     ReferenceField,
     EnumField,
     BooleanField,
-    DateTimeField
+    DateTimeField,
 )
 
 from models.common import Permission
@@ -55,7 +55,7 @@ class File(Document):
 
         result = File.objects.aggregate(*pipeline)
         return result.next()["size"]
-    
+
     def get_last_modified(self):
         if not self.is_dir:
             return self.last_modified
