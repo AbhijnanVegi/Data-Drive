@@ -78,3 +78,6 @@ Start the server
 ```
 npm start
 ```
+
+### Minio
+Login to Minio server at `localhost:9090` using the credentials from docker-compose file and create a bucket named `data-drive`

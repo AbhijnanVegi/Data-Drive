@@ -623,6 +623,7 @@ def unshare(
                     if shared_file is not None:
                         shared_file.delete()
 
+                refresh_share_perms(parent_username)
                 return {"message": "Files unshared successfully!"}
         else:
             shared_file = SharedFile.objects(
@@ -635,7 +636,9 @@ def unshare(
                 )
             else:
                 shared_file.delete()
+                refresh_share_perms(parent_username)
                 return {"message": "File unshared successfully!"}
+    
 
 
 @files_router.post("/copy", response_model=MessageResponse)
