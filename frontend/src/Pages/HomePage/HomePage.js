@@ -139,31 +139,64 @@ const HomePage = () => {
     setIsVideoModalOpen(false);
   };
   const handleShareFolderFormSubmit = (values) => {
+    console.log("share folder modal", values)
+    const permdict = {
+      "read": 1,
+      "write": 2,
+    }
+    if (values.sharewitheveryone === true) {
+      console.log("sharing with everyone")
+      selectedFiles.forEach(async (file) => {
+        var tempid = file.id;
+        if (file.isDir) {
+          tempid = tempid.slice(0, -1);
+        }
+        const shareRequest = {
+          "path": tempid,
+          "permissions": permdict[values.permissions]
+        };
+        await api.post("/mark_public", shareRequest)
+          .then((response) => {
+            console.log(response);
+            notifySuccess(response.data.message);
+          })
+          .catch((error) => {
+            console.log(error);
+            notifyFailure(error.response.data.detail);
+          });
+      })
+    }
+    else {
+      console.log("values", selectedFiles)
 
-    setIsShareFolderModalOpen(false);
-    console.log("values", selectedFiles)
-    selectedFiles.forEach(async (file) => {
-      var tempid = file.id;
-      if (file.isDir) {
-        tempid = tempid.slice(0, -1);
+      const permdict = {
+        "read": 1,
+        "write": 2,
       }
-      console.log("hello")
-      const shareRequest = {
-        "path": tempid,
-        "child_username": values.user,
-        "permissions": values.permissions
-      };
-      await api.post("/share", shareRequest)
-        .then((response) => {
-          console.log(response);
-          notifySuccess(response.data.message);
-        })
-        .catch((error) => {
-          console.log(error);
-          notifyFailure(error.response.data.detail);
-        });
+      selectedFiles.forEach(async (file) => {
+        var tempid = file.id;
+        if (file.isDir) {
+          tempid = tempid.slice(0, -1);
+        }
+        console.log("hello")
+        const shareRequest = {
+          "path": tempid,
+          "child_username": values.user,
+          "permissions": permdict[values.permissions]
+        };
+        await api.post("/share", shareRequest)
+          .then((response) => {
+            console.log(response);
+            notifySuccess(response.data.message);
+          })
+          .catch((error) => {
+            console.log(error);
+            notifyFailure(error.response.data.detail);
+          });
 
-    })
+      })
+    }
+    setIsShareFolderModalOpen(false);
   };
 
   const handleShareFolderModalCancel = () => {
@@ -233,7 +266,7 @@ const HomePage = () => {
     console.log("changing menu")
     if (e.key === "1")
       console.log("active Tab is 1")
-      // window.location.href="/home"
+    // window.location.href="/home"
     console.log("urlPathRef is now", urlPathRef.current)
     setActiveTab(e.key);
     handleTabChange(e.key);

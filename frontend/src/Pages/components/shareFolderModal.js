@@ -3,12 +3,21 @@ import { useEffect, useState } from 'react';
 import api from '../../utils/api';
 import { Checkbox } from 'antd';
 import { Radio } from 'antd';
+import { Button } from 'antd';
+
 
 const { Option } = Select;
 
 function ShareFolderModal({ open, onCancel, onSubmit, selectedFiles }) {
     const [form] = Form.useForm();
     const [users, setUsers] = useState([]);
+    const [isSharedWithEveryone, setIsSharedWithEveryone] = useState(false);
+
+    const handleCheckboxChange = (e) => {
+        setIsSharedWithEveryone(e.target.checked);
+        form.setFieldsValue({ sharewitheveryone: e.target.checked });
+    };
+
 
     useEffect(() => {
         api.get('/auth/users')
@@ -20,6 +29,9 @@ function ShareFolderModal({ open, onCancel, onSubmit, selectedFiles }) {
             });
     }, []);
 
+    const handleSharewithEveryone = () => {
+        console.log("sharing with everyone")
+    }
     const handleOk = () => {
         form
             .validateFields()
@@ -38,7 +50,17 @@ function ShareFolderModal({ open, onCancel, onSubmit, selectedFiles }) {
                 <Form.Item
                     name="user"
                     label="User"
-                    rules={[{ required: true, message: 'Please select the user!' }]}
+                    rules={[
+                        {
+                            message: 'Please select the user or check the Share with Everyone checkbox!',
+                            validator: (_, value) => {
+                                if (value || form.getFieldValue("sharewitheveryone")) {
+                                    return Promise.resolve();
+                                }
+                                return Promise.reject();
+                            }
+                        }
+                    ]}
                 >
                     <Select
                         showSearch
@@ -47,6 +69,7 @@ function ShareFolderModal({ open, onCancel, onSubmit, selectedFiles }) {
                         filterOption={(input, option) =>
                             option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
                         }
+                        disabled={form.getFieldValue("sharewitheveryone")} // Disable the Select component when isSharedWithEveryone is true
                     >
                         {users.slice(0, 5).map(user => (
                             <Option key={user.username}>{user.username}</Option>
@@ -58,6 +81,9 @@ function ShareFolderModal({ open, onCancel, onSubmit, selectedFiles }) {
                         <Radio value="read">Read</Radio>
                         <Radio value="write">Write</Radio>
                     </Radio.Group>
+                </Form.Item>
+                <Form.Item name="sharewitheveryone" label="Share with Everyone" valuePropName="checked">
+                    <Checkbox onChange={handleCheckboxChange}>Yes</Checkbox>
                 </Form.Item>
             </Form>
         </Modal>
