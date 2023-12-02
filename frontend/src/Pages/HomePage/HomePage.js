@@ -212,7 +212,8 @@ const HomePage = () => {
       await api.post("/move", moverequest)
         .then((response) => {
           console.log(response);
-          notifySuccess(response.data.message);
+          notifySuccess("File Moved Succesfully");
+          setRerender(!rerender);
         })
         .catch((error) => {
           console.log(error);
@@ -246,24 +247,30 @@ const HomePage = () => {
     }
   };
   const fileActions = customActions;
+  const [lastUploadedFile, setLastUploadedFile] = useState(null);
   const uploadFile = async (file, filename) => {
     const response = await handleFileUpload(file, path + "/" + filename);
     if (response.status === 200) {
-      const tempElement = { id: path + "/" + filename, isDir: false, name: filename };
+      const tempElement = { id: path + "/" + filename, isDir: false, name: filename, ext: filename.split('.').pop() };
       setFiles((files) => [...files, tempElement]);
+      setLastUploadedFile(tempElement);
       notifySuccess(response.data.message);
     } else {
       notifyFailure(response.data.message);
     }
   };
+  useEffect(() => {
+    console.log("lastUploadedFile", lastUploadedFile)
+  }, [lastUploadedFile])
 
   useEffect(() => {
     fetchUserInfo(setPath, setSharedPath, setFolders, setUser, setIsAdmin);
   }, []);
+  const [rerender, setRerender] = useState(false);
   useEffect(() => {
     if (path !== null && activeTab === "1")
       fetchFiles(path, setFolders, setFiles, setPictures);
-  }, [path, activeTab]);
+  }, [path, activeTab, lastUploadedFile, rerender]);
   useEffect(() => {
     if (sharedpath !== null && activeTab === "2") {
       console.log("sharedpath inside useEffect", sharedpath)
@@ -364,6 +371,7 @@ const HomePage = () => {
         ) {
           openImage(targetFile, pictures, setPictures, setIsPictureModalOpen);
         } else if (fileExtension === "mp4") {
+          console.log("opening video modal")
           openVideo(targetFile, setActiveVideo, setIsVideoModalOpen);
         }
         else if (fileExtension === "md") {
@@ -400,9 +408,18 @@ const HomePage = () => {
   } : {};
   const handleLogout = () => {
     // Remove the user's data from local storage or cookies
-    localStorage.removeItem('token');
+    api.post('/auth/logout', {
+      withCredentials: true,
+    })
+      .then((response) => {
+        console.log(response);
+        window.location.href = "/";
+      })
+      .catch((error) => {
+        console.log(error);
+        notifyFailure(error.response.data.detail);
+      });
     // Redirect the user to the login page
-    window.location.href = '/';
   };
   function formatBytes(bytes) {
     if (bytes < 1024) return bytes + ' B';
@@ -574,7 +591,15 @@ const HomePage = () => {
             <Spin size="large" spinning={loading} tip="Loading..." className="centered-opaque-spinner">
               <CreateFolderModal open={isCreateFolderModalOpen} onCancel={handleCancel} onSubmit={handleCreateFolderFormSubmit} />
               <VideoModal open={isVideoModalOpen} onCancel={handleVideoModalCancel} activeVideo={activeVideo} />
-              <PictureModal open={isPictureModalOpen} onCancel={handlePictureModalCancel} pictures={pictures} />
+              <PictureModal open={isPictureModalOpen} onCancel={handlePictureModalCancel} pictures={sharedpictures} />
+              <Modal
+                width={1000}
+                open={isMarkdownModalOpen}
+                onCancel={() => setIsMarkdownModalOpen(false)}
+                footer={null}
+              >
+                <Markdown>{markdown}</Markdown>
+              </Modal>
               <FullFileBrowser
                 files={sharedfiles}
                 folderChain={sharedfolders}

@@ -103,11 +103,12 @@ export const openVideo = (targetFile, setActiveVideo, setIsVideoModalOpen) => {
   if (downloadpath[downloadpath.length - 1] === "/") {
     downloadpath = downloadpath.slice(0, -1);
   }
-  api.get("/token/" + downloadpath, {
-    withCredentials: true,
+  console.log("video downloadpath", downloadpath)
+  api.get("/get/" + downloadpath, {
+    responseType: "blob",
   })
     .then((res) => {
-      setActiveVideo(res.data.token);
+      setActiveVideo(URL.createObjectURL(res.data));
       setIsVideoModalOpen(true);
     })
     .catch((err) => {

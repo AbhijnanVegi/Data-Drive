@@ -47,12 +47,14 @@ const fetchSharedFiles = async (path, user, setSharedFolders, setSharedFiles, se
         }
         const res = await api.post('/list_shared_with', fileRequest);
         // only use those files for which the responses are not null
+        console.log("response from fetchSharedFiles", res.data)
         const tempFileArray = (await Promise.all(res.data.map(createFileElement))).filter(file => file !== null); console.log("tempFileArray sharedfiles", tempFileArray)
+        console.log("tempFileArray",tempFileArray)
         setSharedFiles(tempFileArray);
 
         const tempPictures = tempFileArray
             .filter(isImage)
-            .map((element) => element.token);
+            .map((element) => element.id);
         setSharedPictures(tempPictures);
     } catch (err) {
         console.error(err);

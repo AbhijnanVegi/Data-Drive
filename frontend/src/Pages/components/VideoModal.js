@@ -11,7 +11,7 @@ export const VideoModal = ({ open, onCancel, activeVideo }) => (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
       <video style={{ maxWidth: '100%', borderRadius: '4px', boxShadow: '0 4px 8px 0 rgba(0, 0, 0, 0.2)' }} controls>
         <source
-          src={"http://localhost:8000/download/" + activeVideo}
+          src={activeVideo}
           type="video/mp4"
         />
       </video>
