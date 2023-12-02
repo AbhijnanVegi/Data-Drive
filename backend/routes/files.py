@@ -697,6 +697,11 @@ def copy(
     if quota_user.storage_used + copy_size > quota_user.storage_quota:
         raise HTTPException(status_code=400, detail="User storage quota exceeded!")
 
+    if File.objects(path=dest_path + src_path[len(parent_path) :]).first():
+        raise HTTPException(
+            status_code=400, detail="Destination file/folder already exists!"
+        )
+
     if src_file.is_dir:
         dest_public = dest_file.public
 
