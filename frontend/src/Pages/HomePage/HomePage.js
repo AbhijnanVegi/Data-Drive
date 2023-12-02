@@ -1,5 +1,5 @@
 import handleFileUpload from "../../utils/fileUpload";
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useState, useRef } from "react";
 import { Modal } from "antd";
 import { Progress, Space } from 'antd';
 import { setChonkyDefaults, FullFileBrowser } from "chonky";
@@ -48,6 +48,7 @@ import {
 import { getTwoToneColor, setTwoToneColor } from '@ant-design/icons';
 import api from "../../utils/api";
 import { TransferFileModal } from "../components/TransferFileModal";
+import { useLocation } from "react-router-dom";
 
 
 setChonkyDefaults({ iconComponent: ChonkyIconFA });
@@ -59,6 +60,9 @@ setChonkyDefaults({ iconComponent: ChonkyIconFA });
 const HomePage = () => {
   const [theme, setTheme] = React.useState('light');
   const [files, setFiles] = useState([]);
+  // const [urlPath, setUrlPath] = useRef("/home");
+  // make useRef
+  const urlPathRef = useRef("/home");
   const [sharedfiles, setSharedFiles] = useState([]); // array of file names [file1, file2, file3
   const [path, setPath] = useState(null);
   const [sharedpath, setSharedPath] = useState(null);
@@ -226,6 +230,11 @@ const HomePage = () => {
     setIsMoveFilesModalOpen(false);
   }
   const handleMenuClick = (e) => {
+    console.log("changing menu")
+    if (e.key === "1")
+      console.log("active Tab is 1")
+      // window.location.href="/home"
+    console.log("urlPathRef is now", urlPathRef.current)
     setActiveTab(e.key);
     handleTabChange(e.key);
   };
@@ -408,6 +417,7 @@ const HomePage = () => {
   } : {};
   const handleLogout = () => {
     // Remove the user's data from local storage or cookies
+    console.log("inside handleLogout")
     api.post('/auth/logout', {
       withCredentials: true,
     })
@@ -461,6 +471,25 @@ const HomePage = () => {
       fetchConfig(setConfig);
     }
   }, [activeTab])
+
+  useEffect(() => {
+    // console.log(urlPath)
+    console.log("urlPathRef useEffect called", urlPathRef.current)
+    if (urlPathRef.current === "/home")
+      setPath(user.username);
+    else {
+      setPath(urlPathRef.current.substring(1));
+    }
+    console.log("Effecting")
+  }, [urlPathRef.current])
+
+  const location = useLocation();
+  if (location.pathname !== "/home") {
+    urlPathRef.current = location.pathname;
+    console.log("location", location.pathname)
+  }
+
+
   return (
     <div className="full-page" data-theme={theme} >
       <div className="menu-container" style={menuStyle} >
