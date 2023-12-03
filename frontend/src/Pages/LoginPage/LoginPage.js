@@ -47,7 +47,7 @@ const LoginPage = () => {
         for (let key in values) {
             formData.append(key, values[key]);
         }
-        axios('http://localhost:8000/auth/login', {
+        axios('/api/auth/login', {
             method: "post",
             withCredentials: true,
             data: formData,
@@ -59,7 +59,7 @@ const LoginPage = () => {
             console.log(response)
             if(response.status === 200){
                 localStorage.setItem('token', response.data.access_token);
-                axios('http://localhost:8000/auth/user', {
+                axios('/api/auth/user', {
                     method: "get",
                     withCredentials: true,
                     headers: {
@@ -100,7 +100,7 @@ const LoginPage = () => {
                 "password": values.signupPassword
             }
         }
-        axios('http://localhost:8000/auth/register', { method: "post", withCredentials: true, data: request })
+        axios('/api/auth/register', { method: "post", withCredentials: true, data: request })
             .then((response) => {
                 console.log("response")
                 console.log(response)

@@ -16,8 +16,8 @@ export const downloadFile = (filePath, notifyFailure) => {
         }).then((res) => {
           if (res.data.status === "done") {
             clearInterval(interval);
-            // window.open("http://localhost:8000/download/" + token);
-            fetch(`http://localhost:8000/download/${token}`)
+            // window.open("/download/" + token);
+            fetch(`/download/${token}`)
               .then(response => response.blob())
               .then(blob => {
                 const url = window.URL.createObjectURL(blob);
@@ -125,7 +125,7 @@ export const openOtherFile = (targetFile) => {
     withCredentials: true,
   })
     .then((res) => {
-      window.open("http://localhost:8000/download/" + res.data.token);
+      window.open("/download/" + res.data.token);
     })
     .catch((err) => {
       console.log(err);

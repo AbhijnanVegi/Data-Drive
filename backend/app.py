@@ -8,7 +8,7 @@ from routes.auth import auth_router
 from routes.files import files_router
 from routes.admin import admin_router
 
-app = FastAPI()
+app = FastAPI(docs_url="/api/docs")
 
 origins = [
     "http://localhost:3000",
@@ -34,10 +34,10 @@ async def startup_db_client():
 async def shutdown_db_client():
     disconnect_db()
 
-
-app.include_router(auth_router)
-app.include_router(files_router)
-app.include_router(admin_router)
+DEFAULT_APP_PREFIX = "/api"
+app.include_router(auth_router, prefix=DEFAULT_APP_PREFIX)
+app.include_router(files_router, prefix=DEFAULT_APP_PREFIX)
+app.include_router(admin_router, prefix=DEFAULT_APP_PREFIX)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=5000, reload=True, reload_dirs=["backend"])
