@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from minio.deleteobjects import DeleteObject
 
 from dependencies import get_auth_user, get_auth_user_optional, MessageResponse
-from config import app_config
+from config import app_config, MINIO_BUCKET
 from models.user import User
 from models.file import File, SharedFile
 from models.common import Permission
@@ -110,7 +110,7 @@ async def upload_file(
 
     try:
         mc.put_object(
-            "data-drive", path, file.file, -1, content_type, part_size=10 * 1024 * 1024
+            MINIO_BUCKET, path, file.file, -1, content_type, part_size=10 * 1024 * 1024
         )
 
         # Create database entry for file
@@ -177,7 +177,7 @@ def mkdir(
         return {"message": "You do not have permission to create a directory here!"}
 
     directory = File(path=data.path, owner=user, is_dir=True).save()
-    mc.put_object("data-drive", data.path + "/_", io.BytesIO(b""), 0)
+    mc.put_object(MINIO_BUCKET, data.path + "/_", io.BytesIO(b""), 0)
     return {"message": "Directory created successfully!"}
 
 
@@ -216,7 +216,7 @@ def list(
         )
 
     objJSON = []
-    for obj in mc.list_objects("data-drive", data.path + "/", recursive=False):
+    for obj in mc.list_objects(MINIO_BUCKET, data.path + "/", recursive=False):
         objJSON.append(
             {
                 "path": obj.object_name,
@@ -301,12 +301,12 @@ def delete(
         )
 
     if is_dir:
-        mc.remove_object("data-drive", data.path + "/_")
+        mc.remove_object(MINIO_BUCKET, data.path + "/_")
         delete_object_list = map(
             lambda x: DeleteObject(x.object_name),
-            mc.list_objects("data-drive", data.path, recursive=True),
+            mc.list_objects(MINIO_BUCKET, data.path, recursive=True),
         )
-        errors = mc.remove_objects("data-drive", delete_object_list)
+        errors = mc.remove_objects(MINIO_BUCKET, delete_object_list)
         # delete shared file objects associated with files in the directory
         for file in File.objects(path__startswith=data.path):
             SharedFile.objects(file=file).delete()
@@ -315,7 +315,7 @@ def delete(
             print("Error occurred when deleting " + error.object_name)
         return {"message": "Folder deleted successfully!"}
     else:
-        mc.remove_object("data-drive", data.path)
+        mc.remove_object(MINIO_BUCKET, data.path)
         SharedFile.objects(file=file).delete()
         file.delete()
         return {"message": "File deleted successfully!"}
@@ -354,7 +354,7 @@ def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)
         )
 
     try:
-        mc.fget_object("data-drive", path, "/tmp/" + path)
+        mc.fget_object(MINIO_BUCKET, path, "/tmp/" + path)
         return "/tmp/" + path
     except Exception as err:
         raise HTTPException(status_code=400, detail=str(err))
@@ -419,7 +419,7 @@ def share(
 
         shared_list.append(shared_file)
 
-    for obj in mc.list_objects("data-drive", prefix=path + "/", recursive=True):
+    for obj in mc.list_objects(MINIO_BUCKET, prefix=path + "/", recursive=True):
         if obj.object_name[-1] == "_":
             file_path = obj.object_name[:-2]
             file = File.objects(path=file_path).first()
@@ -498,7 +498,7 @@ def get_shared_with(
             if shared_file:
                 if shared_file.file.is_dir:
                     for obj in mc.list_objects(
-                        "data-drive", prefix=path + "/", recursive=False
+                        MINIO_BUCKET, prefix=path + "/", recursive=False
                     ):
                         if obj.object_name[-1] == "_":
                             continue
@@ -705,11 +705,11 @@ def copy(
     if src_file.is_dir:
         dest_public = dest_file.public
 
-        for obj in mc.list_objects("data-drive", prefix=src_path + "/", recursive=True):
+        for obj in mc.list_objects(MINIO_BUCKET, prefix=src_path + "/", recursive=True):
             mc.copy_object(
-                "data-drive",
+                MINIO_BUCKET,
                 dest_path + obj.object_name[len(parent_path) :],
-                minio.commonconfig.CopySource("data-drive", obj.object_name),
+                minio.commonconfig.CopySource(MINIO_BUCKET, obj.object_name),
             )
 
         for file in File.objects(path__startswith=src_path):
@@ -722,9 +722,9 @@ def copy(
             ).save()
     else:
         mc.copy_object(
-            "data-drive",
+            MINIO_BUCKET,
             dest_path + src_path[len(parent_path) :],
-            minio.commonconfig.CopySource("data-drive", src_path),
+            minio.commonconfig.CopySource(MINIO_BUCKET, src_path),
         )
         File(
             path=dest_path + src_file.path[len(parent_path) :],
@@ -796,13 +796,13 @@ def move(
     dest_public = dest_file.public
 
     if src_file.is_dir:
-        for obj in mc.list_objects("data-drive", prefix=src_path + "/", recursive=True):
+        for obj in mc.list_objects(MINIO_BUCKET, prefix=src_path + "/", recursive=True):
             mc.copy_object(
-                "data-drive",
+                MINIO_BUCKET,
                 dest_path + obj.object_name[len(parent_path) :],
-                minio.commonconfig.CopySource("data-drive", obj.object_name),
+                minio.commonconfig.CopySource(MINIO_BUCKET, obj.object_name),
             )
-            mc.remove_object("data-drive", obj.object_name)
+            mc.remove_object(MINIO_BUCKET, obj.object_name)
 
         for file in File.objects(path__startswith=src_path):
             shares = SharedFile.objects(file=file)
@@ -818,11 +818,11 @@ def move(
 
     else:
         obj = mc.copy_object(
-            "data-drive",
+            MINIO_BUCKET,
             dest_path + src_path[len(parent_path) :],
-            minio.commonconfig.CopySource("data-drive", src_path),
+            minio.commonconfig.CopySource(MINIO_BUCKET, src_path),
         )
-        mc.remove_object("data-drive", src_path)
+        mc.remove_object(MINIO_BUCKET, src_path)
 
         to_move_file = File.objects(path=src_path).first()
         to_move_file.path = dest_path + to_move_file.path[len(parent_path) :]

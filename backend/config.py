@@ -10,13 +10,14 @@ MONGO_CONFIG = settings.get(
     "mongo", {"host": "localhost", "port": 27017, "db": "dfs-drive"}
 )
 MINIO_CONFIG = settings.get(
-    "minio", {"host": "localhost:9000", "username": "minio", "password": "minio123"}
+    "minio", {"host": "localhost:9000", "username": "minio", "password": "minio123", "bucket": "data-drive"}
 )
 
 SECRET_KEY = settings.get("auth.secret-key", "secret")
 ALGORITHM = settings.get("auth.algorithm", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.get("auth.access-token-expire-minutes", 30)
 
+MINIO_BUCKET = MINIO_CONFIG.get("bucket", "data-drive")
 
 class Config:
     max_preview_size: int

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from models.file import File
 from models.job import Job, Status
 from storage.client import minio_client as mc
-from config import app_config
+from config import app_config, MINIO_BUCKET
 
 
 def create_job(token: str, files: List[File], username=None, prefix=None):
@@ -20,7 +20,7 @@ def create_job(token: str, files: List[File], username=None, prefix=None):
     for i, file in enumerate(files):
         try:
             mc.fget_object(
-                "data-drive",
+                MINIO_BUCKET,
                 file.path,
                 f"/tmp/{folder_name}/{os.path.relpath(file.path, prefix) if prefix else os.path.basename(file.path)}",
             )
