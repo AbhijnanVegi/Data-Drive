@@ -1,8 +1,15 @@
 # Data-Drive
 A cloud file storage/ hosting platform for data foundation systems.
 
+## Production Setup
+Configure `credentials.toml` in `/backend` to point to the correct database and minio server. If you are using docker for mongodb and minio, uncomment the commented host addresses.
 
-## Setup
+Then start the docker containers
+```
+docker-compose up -d
+```
+
+## Development Setup
 
 ### Backend Configuration
 The backend is configured through to two TOML files. The first is `credentials.toml` which contains the credentials for the JWT tokens and other services. The second is `settings.toml` which contains the configuration for the database and the server.
