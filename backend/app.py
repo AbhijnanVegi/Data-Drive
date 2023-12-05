@@ -34,6 +34,7 @@ async def startup_db_client():
 async def shutdown_db_client():
     disconnect_db()
 
+
 DEFAULT_APP_PREFIX = "/api"
 app.include_router(auth_router, prefix=DEFAULT_APP_PREFIX)
 app.include_router(files_router, prefix=DEFAULT_APP_PREFIX)

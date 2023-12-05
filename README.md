@@ -5,7 +5,7 @@ A cloud file storage/ hosting platform for data foundation systems.
 Configure `credentials.toml` in `/backend` to point to the correct database and minio server. If you are using docker for mongodb and minio, uncomment the commented host addresses.
 
 Then start the docker containers
-```
+```bash
 docker-compose up -d
 ```
 

@@ -491,9 +491,7 @@ def get_shared_with(
         if file is None:
             raise HTTPException(status_code=400, detail="File does not exist!")
         else:
-            shared_file = SharedFile.objects(
-                user=user, file=file
-            ).first()
+            shared_file = SharedFile.objects(user=user, file=file).first()
 
             if shared_file:
                 if shared_file.file.is_dir:
@@ -638,7 +636,6 @@ def unshare(
                 shared_file.delete()
                 refresh_share_perms(parent_username)
                 return {"message": "File unshared successfully!"}
-    
 
 
 @files_router.post("/copy", response_model=MessageResponse)
@@ -951,13 +948,18 @@ def refresh_share_perms(username: str):
 
     for explicit_share in SharedFile.objects(owner=user, explicit=True):
         for file in File.objects(path__startswith=explicit_share.file.path + "/"):
-            print(file.path,explicit_share.user.username)
+            print(file.path, explicit_share.user.username)
             existing_share = SharedFile.objects(
                 user=explicit_share.user, file=file, explicit=False, owner=file.owner
             ).first()
 
             if existing_share == None:
-                print("Creating share", file.path, explicit_share.user.username, file.owner)
+                print(
+                    "Creating share",
+                    file.path,
+                    explicit_share.user.username,
+                    file.owner,
+                )
                 SharedFile(
                     file=file,
                     user=explicit_share.user,
