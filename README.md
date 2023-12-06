@@ -1,5 +1,19 @@
 # Data-Drive
-A cloud file storage/ hosting platform for data foundation systems.
+Data drive is a cloud file hosting/sharing platform to allow researchers to share and collaborate on data. It is built on top of MinIO using FastAPI and ReactJS. It allows users to upload, download, share and visualize data as part of the Data Foundation Systems project. It is also uilt in an extensible manner to allow for data processing and analysis in the future.
+
+Technologies - FastAPI, ReactJS, MongoDB, MinIO
+
+## Features
+- Multiple file upload/download
+- Copy/Move/Rename files
+- File sharing with user wise permissions
+- Universal file sharing
+- Preview files in browser (Markdown, Images, Videos)
+- User management with storage quotas and permissions
+- Dynamic server config updates without restart
+- Easy to deploy using docker-compose
+
+More documentation available in the [Here](/docs/).
 
 ## Production Setup
 Configure `credentials.toml` in `/backend` to point to the correct database and minio server. If you are using docker for mongodb and minio, uncomment the commented host addresses.

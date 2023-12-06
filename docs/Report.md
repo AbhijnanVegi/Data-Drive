@@ -14,11 +14,11 @@ users, etc. The other is MinIO which is used for storing the actual files.
 
 The Database Diagram is as follows:
 
-![Database Diagram](./erd.png)
+![Database Diagram](./images/erd.png)
 
 The Class Diagram is as follows:
 
-![Class Diagram](./classes.png)
+![Class Diagram](./images/classes.png)
 ## Features
 ### User
 The application supports creating users, logging in and logging out. Authentication is done using JWT tokens and fastapi.
@@ -29,7 +29,6 @@ a permission level which can be changed by the admin. The user can also see the 
 * Upload - The user has the ability to upload files to their assigned storage space if they have the permission. This is done using MinIO and MongoDB.
 * Download - The user has the ability to download files from any storage space if they have the permission. In this process 
 the file is first downloaded from MinIO and then sent to the user. 
-> Note: The download process to the server from MinIO is done in the background using fastapi background tasks. This is done to prevent the server from being blocked while the file is being downloaded. Furthermore the file is downloaded to the server and then sent to the user. This is done to prevent the user from accessing the MinIO server directly. Since some of the files may be pretty huge we need to perform cleanup task of the expired files. 
 * File System manipulation - The user has the ability to create and delete folders given they have the permission. 
 * File Sharing - The user has the ability to share files with other users. The user can also set permissions for the shared file. 
 * Copying/ Moving files - The user has the ability to copy or move files from one folder to another. 
