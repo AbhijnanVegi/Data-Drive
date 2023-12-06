@@ -20,6 +20,14 @@ const formatBytes = (bytes, decimals = 2) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+/**
+ * Renders the right sidebar component.
+ * 
+ * @param {Object} props - The component props.
+ * @param {Array} props.files - The array of files.
+ * @param {string} props.darkMode - The dark mode setting.
+ * @returns {JSX.Element} The right sidebar component.
+ */
 export const RightSidebar = ({ files, darkMode }) => {
   const sidebarStyle = darkMode === 'dark' ? {
     backgroundColor: '#424242',

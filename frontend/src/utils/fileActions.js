@@ -121,11 +121,28 @@ export const openOtherFile = (targetFile) => {
   if (downloadpath[downloadpath.length - 1] === "/") {
     downloadpath = downloadpath.slice(0, -1);
   }
-  api.get("/token/" + downloadpath, {
-    withCredentials: true,
+  // api.get("/token/" + downloadpath, {
+  //   withCredentials: true,
+  // })
+  //   .then((res) => {
+  //     window.open("/download/" + res.data.token);
+  //   })
+  //   .catch((err) => {
+  //     console.log(err);
+  //   });
+  api.get("/get/" + downloadpath, {
+    responseType: "blob",
   })
     .then((res) => {
-      window.open("/download/" + res.data.token);
+      const url = window.URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      const fileName = downloadpath.split('/').pop(); // Extract file name from download path
+      link.setAttribute('download', fileName); // Use the actual file name here
+      link.style.display = 'none'; // Ensure the link element is not visible
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     })
     .catch((err) => {
       console.log(err);

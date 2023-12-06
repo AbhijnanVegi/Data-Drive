@@ -3,6 +3,14 @@ import { SearchOutlined } from '@ant-design/icons';
 import Highlighter from 'react-highlight-words';
 import { useState, useRef } from 'react';
 
+/**
+ * Renders a table component for displaying shared files.
+ *
+ * @param {Object} props - The component props.
+ * @param {Array} props.data - The data to be displayed in the table.
+ * @param {Function} props.onUnshare - The callback function to be called when unshare button is clicked.
+ * @returns {JSX.Element} The rendered table component.
+ */
 const SharedByTable = ({ data, onUnshare }) => {
     const [searchText, setSearchText] = useState('');
 

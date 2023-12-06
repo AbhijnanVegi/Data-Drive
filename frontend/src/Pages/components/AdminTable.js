@@ -3,6 +3,13 @@ import { useEffect, useState, useRef } from 'react';
 
 const { Option } = Select;
 
+/**
+ * Renders an admin table component.
+ *
+ * @param {Object[]} data - The data to be displayed in the table.
+ * @param {Function} onUpdate - The function to be called when an update button is clicked.
+ * @returns {JSX.Element} The rendered admin table component.
+ */
 const AdminTable = ({ data, onUpdate }) => {
     data = data.map((item, index) => {
         return {

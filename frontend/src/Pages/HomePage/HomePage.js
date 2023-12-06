@@ -30,6 +30,13 @@ import SharedByTable from "../components/SharedByTable";
 import { fetchConfig } from "../../utils/fetchConfig";
 import { AdminSidebar } from "../components/AdminPageSidebar";
 import { openMarkdown } from "../../utils/fileActions";
+import { handleUnshare, handleShareFolderFormSubmit } from "../../utils/modalutils/shareutils";
+import { handleMoveFileFormSubmit, handleCopyFileFormSubmit } from "../../utils/modalutils/copyandmoveutils";
+import TopMenu from "../components/TopMenu";
+import BottomMenu from "../components/BottomMenu";
+import { downloadSelectedFiles, deleteSelectedFiles, handleFileOpen } from "../../utils/handleActions";
+import { notifyFailure, notifySuccess } from "../../utils/toaster";
+
 import Markdown from 'react-markdown'
 
 
@@ -93,33 +100,6 @@ const HomePage = () => {
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
   };
-  const notifySuccess = (message) => {
-    toast.success(message, {
-      position: "bottom-center",
-    });
-  };
-  const notifyFailure = (message) => {
-    toast.error(message, {
-      position: "bottom-center",
-    });
-  };
-  const handleUnshare = (id, child_username) => {
-    console.log("unsharing", id)
-    const unshareRequest = {
-      "path": id,
-      "child_username": child_username
-    };
-    api.post("/unshare", unshareRequest)
-      .then((response) => {
-        console.log(response);
-        notifySuccess(response.data.message);
-        fetchSharedByData(setSharedByData);
-      })
-      .catch((error) => {
-        console.log(error);
-        notifyFailure(error.response.data.detail);
-      });
-  }
   const showModal = () => {
     setIsCreateFolderModalOpen(true);
   };
@@ -138,125 +118,11 @@ const HomePage = () => {
   const handleVideoModalCancel = () => {
     setIsVideoModalOpen(false);
   };
-  const handleShareFolderFormSubmit = (values) => {
-    console.log("share folder modal", values)
-    const permdict = {
-      "read": 1,
-      "write": 2,
-    }
-    if (values.sharewitheveryone === true) {
-      console.log("sharing with everyone")
-      selectedFiles.forEach(async (file) => {
-        var tempid = file.id;
-        if (file.isDir) {
-          tempid = tempid.slice(0, -1);
-        }
-        const shareRequest = {
-          "path": tempid,
-          "permissions": permdict[values.permissions]
-        };
-        await api.post("/mark_public", shareRequest)
-          .then((response) => {
-            console.log(response);
-            notifySuccess(response.data.message);
-          })
-          .catch((error) => {
-            console.log(error);
-            notifyFailure(error.response.data.detail);
-          });
-      })
-    }
-    else {
-      console.log("values", selectedFiles)
-
-      const permdict = {
-        "read": 1,
-        "write": 2,
-      }
-      selectedFiles.forEach(async (file) => {
-        var tempid = file.id;
-        if (file.isDir) {
-          tempid = tempid.slice(0, -1);
-        }
-        console.log("hello")
-        const shareRequest = {
-          "path": tempid,
-          "child_username": values.user,
-          "permissions": permdict[values.permissions]
-        };
-        await api.post("/share", shareRequest)
-          .then((response) => {
-            console.log(response);
-            notifySuccess(response.data.message);
-          })
-          .catch((error) => {
-            console.log(error);
-            notifyFailure(error.response.data.detail);
-          });
-
-      })
-    }
-    setIsShareFolderModalOpen(false);
-  };
-
   const handleShareFolderModalCancel = () => {
     setIsShareFolderModalOpen(false);
   };
-
-  const handleCopyFileFormSubmit = (values) => {
-    setIsCopyFilesModalOpen(false);
-    console.log("values", selectedFiles)
-
-    selectedFiles.forEach(async (file) => {
-      var tempid = file.id;
-      if (tempid[tempid.length - 1] === "/") {
-        tempid = tempid.slice(0, -1);
-      }
-      const copyRequest = {
-        src_path: tempid,
-        dest_path: values.destinationpath
-      };
-      await api.post("/copy", copyRequest)
-        .then((response) => {
-          console.log(response);
-          notifySuccess(response.data.message);
-        })
-        .catch((error) => {
-          console.log(error);
-          notifyFailure(error.response.data.detail);
-        });
-
-    })
-  }
-
   const handleCopyFilesModalCancel = () => {
     setIsCopyFilesModalOpen(false);
-  }
-
-  const handleMoveFileFormSubmit = (values) => {
-    setIsMoveFilesModalOpen(false);
-    console.log("values", selectedFiles)
-
-    selectedFiles.forEach(async (file) => {
-      var tempid = file.id;
-      if (tempid[tempid.length - 1] === "/") {
-        tempid = tempid.slice(0, -1);
-      }
-      const moverequest = {
-        src_path: tempid,
-        dest_path: values.destinationpath
-      };
-      await api.post("/move", moverequest)
-        .then((response) => {
-          console.log(response);
-          notifySuccess("File Moved Succesfully");
-          setRerender(!rerender);
-        })
-        .catch((error) => {
-          console.log(error);
-          notifyFailure(error.response.data.detail);
-        });
-    })
   }
 
   const handleMoveFilesModalCancel = () => {
@@ -301,45 +167,33 @@ const HomePage = () => {
       notifyFailure(response.data.message);
     }
   };
-  useEffect(() => {
-    console.log("lastUploadedFile", lastUploadedFile)
-  }, [lastUploadedFile])
+  const [rerender, setRerender] = useState(false);
 
   useEffect(() => {
     fetchUserInfo(setPath, setSharedPath, setFolders, setUser, setIsAdmin);
   }, []);
-  const [rerender, setRerender] = useState(false);
   useEffect(() => {
     if (path !== null && activeTab === "1")
       fetchFiles(path, setFolders, setFiles, setPictures);
   }, [path, activeTab, lastUploadedFile, rerender]);
   useEffect(() => {
     if (sharedpath !== null && activeTab === "2") {
-      console.log("sharedpath inside useEffect", sharedpath)
       fetchSharedFiles(sharedpath, user, setSharedFolders, setSharedFiles, setSharedPictures);
-      console.log("sharefiles is now lmao", sharedfiles)
     }
   }, [sharedpath, activeTab]);
-  useEffect(() => {
-    console.log("sharedpath just changed to", sharedpath)
-  }, [sharedpath])
+
   useEffect(() => {
     if (activeTab === "3") {
       fetchSharedByData(setSharedByData);
     }
   }, [activeTab])
 
-  useEffect(() => {
-    console.log("sharedByData", sharedByData)
-  }, [sharedByData])
-
-
-
   const handleAction = useCallback((data) => {
     console.log("File action data:", data);
     if (data.id === "upload") {
       let input = document.createElement("input");
       input.type = "file";
+      // add support for multiple files
       input.onchange = (_) => {
         let file = Array.from(input.files);
         console.log(files);
@@ -354,25 +208,10 @@ const HomePage = () => {
       showModal();
     }
     if (data.id === "download_files") {
-      console.log("download_files", data.state);
-      const numFiles = data.state.selectedFiles.length;
-      if (numFiles === 1) {
-        console.log("downloading file", data.state.selectedFiles[0].id)
-        var downloadpath = data.state.selectedFiles[0].id;
-        downloadFile(downloadpath, notifyFailure);
-      }
+      downloadSelectedFiles(data, notifyFailure);
     }
     if (data.id === "delete_files") {
-      deleteFiles(data.state.selectedFiles, notifySuccess, notifyFailure)
-        .then((successfulDeletes) => {
-          const newFiles = files.filter((element) => {
-            return !successfulDeletes.includes(element.id); // Only remove successfully deleted files
-          });
-          setFiles(newFiles);
-        })
-        .catch((err) => {
-          console.log(err);
-        });
+      deleteSelectedFiles(data, notifySuccess, notifyFailure, files, setFiles);
     }
     if (data.id === "share_files") {
       console.log("sharing files")
@@ -390,40 +229,7 @@ const HomePage = () => {
       setIsMoveFilesModalOpen(true);
     }
     if (data.id === "open_files") {
-      const targetFile = data.payload.targetFile;
-      console.log("active tab", activeTab)
-      if (targetFile.isDir) {
-        console.log("opening directory", activeTab)
-        if (activeTab === "1")
-          openDirectory(targetFile, setPath);
-        else {
-          console.log("opening shared folder")
-          console.log("targetFile", targetFile)
-          openDirectory(targetFile, setSharedPath);
-          console.log("path is now", path)
-          console.log("shared path is now", sharedpath)
-        }
-      } else {
-        const extensionArray = targetFile.id.split(".");
-        const fileExtension = extensionArray[extensionArray.length - 1];
-        if (
-          fileExtension === "png" || fileExtension === "jpg" ||
-          fileExtension === "jpeg" || fileExtension === "gif" ||
-          fileExtension === "bmp" || fileExtension === "svg"
-        ) {
-          openImage(targetFile, pictures, setPictures, setIsPictureModalOpen);
-        } else if (fileExtension === "mp4") {
-          console.log("opening video modal")
-          openVideo(targetFile, setActiveVideo, setIsVideoModalOpen);
-        }
-        else if (fileExtension === "md") {
-          console.log("opening markdown file")
-          openMarkdown(targetFile, setMarkdown, setIsMarkdownModalOpen);
-        }
-        else {
-          openOtherFile(targetFile);
-        }
-      }
+      handleFileOpen(data.payload.targetFile, activeTab, setPath, setSharedPath, path, sharedpath, pictures, setPictures, setIsPictureModalOpen, setActiveVideo, setIsVideoModalOpen, setMarkdown, setIsMarkdownModalOpen);
     }
     if (data.id === "change_selection") {
       console.log("change selection");
@@ -449,7 +255,6 @@ const HomePage = () => {
     height: '100vh',
   } : {};
   const handleLogout = () => {
-    // Remove the user's data from local storage or cookies
     console.log("inside handleLogout")
     api.post('/auth/logout', {
       withCredentials: true,
@@ -462,15 +267,7 @@ const HomePage = () => {
         console.log(error);
         notifyFailure(error.response.data.detail);
       });
-    // Redirect the user to the login page
   };
-  function formatBytes(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
-    else if (bytes < 1073741824) return (bytes / 1048576).toFixed(2) + ' MB';
-    else return (bytes / 1073741824).toFixed(2) + ' GB';
-  }
-
   useEffect(() => {
     setTwoToneColor(isAdmin ? '#1677ff' : 'grey');
   }, [isAdmin]);
@@ -497,7 +294,6 @@ const HomePage = () => {
         notifyFailure(error.response.data.detail);
       });
   }
-
   useEffect(() => {
     if (activeTab === "6") {
       fetchAdminData(setAdminData);
@@ -527,94 +323,9 @@ const HomePage = () => {
     <div className="full-page" data-theme={theme} >
       <div className="menu-container" style={menuStyle} >
         <h1>DataDrive</h1>
-        <Menu
-          style={{
-            marginBottom: 'auto',
-          }}
-          onClick={handleMenuClick} selectedKeys={[activeTab]} mode="inline" className="custom-menu" theme={theme}
-          items={[
-            {
-              label: 'Home',
-              key: '1',
-              icon: <DesktopOutlined />,
-              title: 'Home',
-            },
-            {
-              label: 'Shared',
-              key: 'Shared',
-              icon: <ShareAltOutlined />,
-              title: 'Shared',
-              children: [
-                {
-                  label: 'Shared with me',
-                  key: '2',
-                  icon: <i className="icon icon-share"></i>,
-                  title: 'Shared with me',
-                },
-                {
-                  label: 'Shared by me',
-                  key: '3',
-                  icon: <i className="icon icon-share"></i>,
-                  title: 'Shared by me',
-                },
-              ],
-            },
-          ]}
-        >
-        </Menu>
+        <TopMenu handleMenuClick={handleMenuClick} activeTab={activeTab} />
         <div className="user-info">
-          <Menu
-            style={{
-              marginBottom: 'auto',
-            }}
-            onClick={handleMenuClick} selectedKeys={[activeTab]} mode="inline" className="custom-menu" theme={theme}
-            items={[
-              {
-                key: '4',
-                icon:
-                  <div style={{
-                    display: 'flex',
-                    fontSize: '12px',
-                  }}>
-                    <span style={{
-                      marginRight: '20px',
-                      color: 'black',
-                    }}>
-                      {`${formatBytes(user.storage_used)} / ${formatBytes(user.storage_quota)}`}
-                    </span>
-                    <Progress
-                      size={[100, 10]}
-                      status="active"
-                      strokeColor={{ from: '#108ee9', to: '#87d068' }}
-                      style={{ fontSize: '12px' }}
-                    />
-                  </div>
-                ,
-                title: 'User',
-                children: [
-                  {
-                    label: <span style={{ color: 'red' }}>Logout</span>,
-                    key: '5',
-                    icon: <LogoutOutlined style={{
-                      color: 'red',
-                    }} />,
-                    title: 'Logout',
-                    onClick: handleLogout,
-                  },
-                  {
-                    label: <span style={{ color: isAdmin ? '#1677ff' : 'grey' }}>Admin Panel</span>,
-                    key: '6',
-                    icon: <IdcardTwoTone style={{
-                      color: '#1677ff',
-                    }} />,
-                    title: 'Admin Panel',
-                    disabled: !isAdmin,
-                  }
-                ],
-              },
-            ]}
-          >
-          </Menu>
+          <BottomMenu handleMenuClick={handleMenuClick} activeTab={activeTab} theme={theme} user={user} handleLogout={handleLogout} isAdmin={isAdmin} />
         </div>
       </div>
       {activeTab === "1" && (
@@ -622,9 +333,15 @@ const HomePage = () => {
           <div className="chonky">
             <Spin size="large" spinning={loading} tip="Loading..." className="centered-opaque-spinner">
               <CreateFolderModal open={isCreateFolderModalOpen} onCancel={handleCancel} onSubmit={handleCreateFolderFormSubmit} />
-              <TransferFileModal open={isCopyFilesModalOpen} onCancel={handleCopyFilesModalCancel} onSubmit={handleCopyFileFormSubmit} selectedFiles={selectedFiles} />
-              <TransferFileModal open={isMoveFilesModalOpen} onCancel={handleMoveFilesModalCancel} onSubmit={handleMoveFileFormSubmit} selectedFiles={selectedFiles} />
-              <ShareFolderModal open={isShareFolderModalOpen} onCancel={handleShareFolderModalCancel} onSubmit={handleShareFolderFormSubmit} selectedFiles={selectedFiles} />
+              <TransferFileModal open={isCopyFilesModalOpen} onCancel={handleCopyFilesModalCancel}
+                onSubmit={(values) => handleCopyFileFormSubmit(values, setIsCopyFilesModalOpen, selectedFiles)}
+                selectedFiles={selectedFiles} />
+              <TransferFileModal open={isMoveFilesModalOpen} onCancel={handleMoveFilesModalCancel}
+                onSubmit={(values) => handleMoveFileFormSubmit(values, setIsMoveFilesModalOpen, selectedFiles, rerender, setRerender)}
+                selectedFiles={selectedFiles} />
+              <ShareFolderModal open={isShareFolderModalOpen}
+                onCancel={handleShareFolderModalCancel}
+                onSubmit={(values) => handleShareFolderFormSubmit(values, selectedFiles, setIsShareFolderModalOpen)} selectedFiles={selectedFiles} />
               <Modal
                 width={1000}
                 open={isMarkdownModalOpen}
@@ -676,7 +393,8 @@ const HomePage = () => {
       {
         activeTab === "3" && (
           <div className="sharedby">
-            <SharedByTable data={sharedByData} onUnshare={handleUnshare} />
+            <SharedByTable data={sharedByData}
+              onUnshare={(id, child_username) => handleUnshare(id, child_username, setSharedByData)} />
           </div>
         )
       }
