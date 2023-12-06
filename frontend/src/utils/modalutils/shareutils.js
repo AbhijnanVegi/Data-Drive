@@ -3,6 +3,13 @@ import { fetchSharedByData } from "../fetchSharedByData";
 import { notifyFailure, notifySuccess } from "../toaster";
 
 
+/**
+ * Handles the unsharing of a file or folder.
+ * 
+ * @param {string} id - The ID of the file or folder to unshare.
+ * @param {string} child_username - The username of the child user to unshare with.
+ * @param {Function} setSharedByData - The function to update the shared by data.
+ */
 export const handleUnshare = (id, child_username, setSharedByData) => {
     console.log("unsharing", id)
     const unshareRequest = {
@@ -21,6 +28,13 @@ export const handleUnshare = (id, child_username, setSharedByData) => {
         });
 }
 
+/**
+ * Handles the submission of the share folder form.
+ * 
+ * @param {object} values - The form values.
+ * @param {array} selectedFiles - The selected files to be shared.
+ * @param {function} setIsShareFolderModalOpen - The function to set the state of the share folder modal.
+ */
 export const handleShareFolderFormSubmit = (values, selectedFiles, setIsShareFolderModalOpen) => {
     console.log("share folder modal", values)
     const permdict = {

@@ -1,61 +1,43 @@
 import handleFileUpload from "../../utils/fileUpload";
 import React, { useEffect, useCallback, useState, useRef } from "react";
 import { Modal } from "antd";
-import { Progress, Space } from 'antd';
 import { setChonkyDefaults, FullFileBrowser } from "chonky";
 import { ChonkyIconFA } from "chonky-icon-fontawesome";
 import "./css/HomePage.css";
 import { customActions } from "../../utils/customFileActions";
-import toast, { Toaster } from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
 import "react-responsive-carousel/lib/styles/carousel.min.css"; // requires a loader
 import fetchFiles from "../../utils/fetchFiles";
 import { fetchAdminData } from "../../utils/fetchAdminData";
 import AdminTable from "../components/AdminTable";
 import fetchUserInfo from "../../utils/fetchUserInfo";
-import handleFolderCreation from "../../utils/createFolder";
 import fetchSharedFiles from "../../utils/fetchSharedFiles";
 import ShareFolderModal from "../components/shareFolderModal";
 import { CreateFolderModal } from "../components/CreateFolderModal";
-import { FooterBar } from "../components/FooterBar";
 import { VideoModal } from "../components/VideoModal";
 import { PictureModal } from "../components/PictureModal";
-import { downloadFile, deleteFiles, openDirectory, openImage, openVideo, openOtherFile } from "../../utils/fileActions";
 import { Spin } from "antd";
 import { Layout } from 'antd';
-import { Menu } from 'antd';
 import { RightSidebar } from "../components/RightSidebar";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { fetchSharedByData } from "../../utils/fetchSharedByData";
 import SharedByTable from "../components/SharedByTable";
 import { fetchConfig } from "../../utils/fetchConfig";
 import { AdminSidebar } from "../components/AdminPageSidebar";
-import { openMarkdown } from "../../utils/fileActions";
 import { handleUnshare, handleShareFolderFormSubmit } from "../../utils/modalutils/shareutils";
 import { handleMoveFileFormSubmit, handleCopyFileFormSubmit } from "../../utils/modalutils/copyandmoveutils";
 import TopMenu from "../components/TopMenu";
 import BottomMenu from "../components/BottomMenu";
 import { downloadSelectedFiles, deleteSelectedFiles, handleFileOpen } from "../../utils/handleActions";
 import { notifyFailure, notifySuccess } from "../../utils/toaster";
-
+import { handleLogout } from "../../utils/logout";
+import { handleAdminUpdate } from "../../utils/adminupdate";
 import Markdown from 'react-markdown'
-
-
-import {
-  AppstoreOutlined,
-  ContainerOutlined,
-  ShareAltOutlined,
-  DesktopOutlined,
-  LogoutOutlined,
-  MailOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  PieChartOutlined,
-  IdcardTwoTone
-} from '@ant-design/icons';
-import { getTwoToneColor, setTwoToneColor } from '@ant-design/icons';
-import api from "../../utils/api";
+import { setTwoToneColor } from '@ant-design/icons';
 import { TransferFileModal } from "../components/TransferFileModal";
 import { useLocation } from "react-router-dom";
+import { handleCreateFolderFormSubmit } from "../../utils/modalutils/createfolder";
+import { CustomFileBrowser } from "../components/CustomFileBrowser";
+import { SharedFileBrowser } from "../components/SharedFileBrowser";
 
 
 setChonkyDefaults({ iconComponent: ChonkyIconFA });
@@ -65,10 +47,7 @@ setChonkyDefaults({ iconComponent: ChonkyIconFA });
  * @component
  */
 const HomePage = () => {
-  const [theme, setTheme] = React.useState('light');
   const [files, setFiles] = useState([]);
-  // const [urlPath, setUrlPath] = useRef("/home");
-  // make useRef
   const urlPathRef = useRef("/home");
   const [sharedfiles, setSharedFiles] = useState([]); // array of file names [file1, file2, file3
   const [path, setPath] = useState(null);
@@ -87,7 +66,6 @@ const HomePage = () => {
   const [isCopyFilesModalOpen, setIsCopyFilesModalOpen] = useState(false);
   const [isMoveFilesModalOpen, setIsMoveFilesModalOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([])
-  const { Header, Footer, Sider, Content } = Layout;
   const [sidebarSelection, setSidebarSelection] = useState([]);
   const [user, setUser] = useState({});
   const [sharedByData, setSharedByData] = useState([]);
@@ -97,17 +75,9 @@ const HomePage = () => {
   const [isMarkdownModalOpen, setIsMarkdownModalOpen] = useState(false);
   const [markdown, setMarkdown] = useState('');
 
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  };
   const showModal = () => {
     setIsCreateFolderModalOpen(true);
   };
-
-  const handleOk = () => {
-    setIsCreateFolderModalOpen(false);
-  };
-
   const handleCancel = () => {
     setIsCreateFolderModalOpen(false);
   };
@@ -138,22 +108,6 @@ const HomePage = () => {
     handleTabChange(e.key);
   };
 
-
-  const handleCreateFolderFormSubmit = async (values) => {
-    handleOk();
-    const folderRequest = {
-      path: path + "/" + values.foldername,
-    };
-    const response = await handleFolderCreation(folderRequest);
-    console.log(response);
-    if (response.status === 200) {
-      const tempElement = { id: path + "/" + values.foldername, isDir: true, name: values.foldername };
-      setFiles((files) => [...files, tempElement]);
-      notifySuccess(response.data.message);
-    } else {
-      notifyFailure(response.data.message);
-    }
-  };
   const fileActions = customActions;
   const [lastUploadedFile, setLastUploadedFile] = useState(null);
   const uploadFile = async (file, filename) => {
@@ -246,53 +200,12 @@ const HomePage = () => {
   useEffect(() => {
     console.log("adminData", adminData)
   }, [adminData])
-  const menuStyle = theme === 'dark' ? {
-    backgroundColor: '#424242',
-    color: '#fff',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    height: '100vh',
-  } : {};
-  const handleLogout = () => {
-    console.log("inside handleLogout")
-    api.post('/auth/logout', {
-      withCredentials: true,
-    })
-      .then((response) => {
-        console.log(response);
-        window.location.href = "/";
-      })
-      .catch((error) => {
-        console.log(error);
-        notifyFailure(error.response.data.detail);
-      });
-  };
+
   useEffect(() => {
     setTwoToneColor(isAdmin ? '#1677ff' : 'grey');
   }, [isAdmin]);
   const handleFetchAdminData = () => {
     fetchAdminData(setAdminData);
-  }
-  const handleAdminUpdate = (record) => {
-    console.log("record", record)
-    const adminUpdateRequest = {
-      "data": {
-        "username": record.username,
-        "permission": record.permission,
-        "storage_quota": record.storage_quota,
-      }
-    }
-    api.post("/admin/update_user", adminUpdateRequest)
-      .then((response) => {
-        console.log(response);
-        handleFetchAdminData();
-        notifySuccess(response.data.message);
-      })
-      .catch((error) => {
-        console.log(error);
-        notifyFailure(error.response.data.detail);
-      });
   }
   useEffect(() => {
     if (activeTab === "6") {
@@ -320,74 +233,74 @@ const HomePage = () => {
 
 
   return (
-    <div className="full-page" data-theme={theme} >
-      <div className="menu-container" style={menuStyle} >
+    <div className="full-page">
+      <div className="menu-container">
         <h1>DataDrive</h1>
         <TopMenu handleMenuClick={handleMenuClick} activeTab={activeTab} />
         <div className="user-info">
-          <BottomMenu handleMenuClick={handleMenuClick} activeTab={activeTab} theme={theme} user={user} handleLogout={handleLogout} isAdmin={isAdmin} />
+          <BottomMenu handleMenuClick={handleMenuClick} activeTab={activeTab} user={user} handleLogout={() => handleLogout(notifyFailure)} isAdmin={isAdmin} />
         </div>
       </div>
       {activeTab === "1" && (
         <>
-          <div className="chonky">
-            <Spin size="large" spinning={loading} tip="Loading..." className="centered-opaque-spinner">
-              <CreateFolderModal open={isCreateFolderModalOpen} onCancel={handleCancel} onSubmit={handleCreateFolderFormSubmit} />
-              <TransferFileModal open={isCopyFilesModalOpen} onCancel={handleCopyFilesModalCancel}
-                onSubmit={(values) => handleCopyFileFormSubmit(values, setIsCopyFilesModalOpen, selectedFiles)}
-                selectedFiles={selectedFiles} />
-              <TransferFileModal open={isMoveFilesModalOpen} onCancel={handleMoveFilesModalCancel}
-                onSubmit={(values) => handleMoveFileFormSubmit(values, setIsMoveFilesModalOpen, selectedFiles, rerender, setRerender)}
-                selectedFiles={selectedFiles} />
-              <ShareFolderModal open={isShareFolderModalOpen}
-                onCancel={handleShareFolderModalCancel}
-                onSubmit={(values) => handleShareFolderFormSubmit(values, selectedFiles, setIsShareFolderModalOpen)} selectedFiles={selectedFiles} />
-              <Modal
-                width={1000}
-                open={isMarkdownModalOpen}
-                onCancel={() => setIsMarkdownModalOpen(false)}
-                footer={null}
-              >
-                <Markdown>{markdown}</Markdown>
-              </Modal>
-              <VideoModal open={isVideoModalOpen} onCancel={handleVideoModalCancel} activeVideo={activeVideo} />
-              <PictureModal open={isPictureModalOpen} onCancel={handlePictureModalCancel} pictures={pictures} />
-              <FullFileBrowser
-                files={files}
-                folderChain={folders}
-                fileActions={fileActions}
-                onFileAction={handleAction}
-                disableDragAndDrop={true}
-                darkMode={theme === 'dark'}
-              /></Spin>
-          </div>
-          <RightSidebar files={sidebarSelection} darkMode={theme} />
+          <CustomFileBrowser
+            loading={loading}
+            isCreateFolderModalOpen={isCreateFolderModalOpen}
+            handleCancel={handleCancel}
+            handleCreateFolderFormSubmit={handleCreateFolderFormSubmit}
+            path={path}
+            setIsCreateFolderModalOpen={setIsCreateFolderModalOpen}
+            setFiles={setFiles}
+            isCopyFilesModalOpen={isCopyFilesModalOpen}
+            handleCopyFilesModalCancel={handleCopyFilesModalCancel}
+            handleCopyFileFormSubmit={handleCopyFileFormSubmit}
+            selectedFiles={selectedFiles}
+            isMoveFilesModalOpen={isMoveFilesModalOpen}
+            handleMoveFilesModalCancel={handleMoveFilesModalCancel}
+            handleMoveFileFormSubmit={handleMoveFileFormSubmit}
+            rerender={rerender}
+            setRerender={setRerender}
+            isShareFolderModalOpen={isShareFolderModalOpen}
+            handleShareFolderModalCancel={handleShareFolderModalCancel}
+            handleShareFolderFormSubmit={handleShareFolderFormSubmit}
+            isMarkdownModalOpen={isMarkdownModalOpen}
+            setIsMarkdownModalOpen={setIsMarkdownModalOpen}
+            markdown={markdown}
+            isVideoModalOpen={isVideoModalOpen}
+            handleVideoModalCancel={handleVideoModalCancel}
+            activeVideo={activeVideo}
+            isPictureModalOpen={isPictureModalOpen}
+            handlePictureModalCancel={handlePictureModalCancel}
+            pictures={pictures}
+            files={files}
+            folders={folders}
+            fileActions={fileActions}
+            handleAction={handleAction}
+          />
+          <RightSidebar files={sidebarSelection} />
         </>
       )}
       {activeTab === "2" && (
         <>
-          <div className="chonky">
-            <Spin size="large" spinning={loading} tip="Loading..." className="centered-opaque-spinner">
-              <CreateFolderModal open={isCreateFolderModalOpen} onCancel={handleCancel} onSubmit={handleCreateFolderFormSubmit} />
-              <VideoModal open={isVideoModalOpen} onCancel={handleVideoModalCancel} activeVideo={activeVideo} />
-              <PictureModal open={isPictureModalOpen} onCancel={handlePictureModalCancel} pictures={sharedpictures} />
-              <Modal
-                width={1000}
-                open={isMarkdownModalOpen}
-                onCancel={() => setIsMarkdownModalOpen(false)}
-                footer={null}
-              >
-                <Markdown>{markdown}</Markdown>
-              </Modal>
-              <FullFileBrowser
-                files={sharedfiles}
-                folderChain={sharedfolders}
-                onFileAction={handleAction}
-                disableDragAndDrop={true}
-                darkMode={theme === 'dark'}
-              /></Spin>
-          </div>
-          <RightSidebar files={sidebarSelection} darkMode={theme} />
+          <SharedFileBrowser
+            loading={loading}
+            isCreateFolderModalOpen={isCreateFolderModalOpen}
+            handleCancel={handleCancel}
+            handleCreateFolderFormSubmit={handleCreateFolderFormSubmit}
+            sharedfiles={sharedfiles}
+            sharedfolders={sharedfolders}
+            handleAction={handleAction}
+            isVideoModalOpen={isVideoModalOpen}
+            handleVideoModalCancel={handleVideoModalCancel}
+            activeVideo={activeVideo}
+            isPictureModalOpen={isPictureModalOpen}
+            handlePictureModalCancel={handlePictureModalCancel}
+            sharedpictures={sharedpictures}
+            isMarkdownModalOpen={isMarkdownModalOpen}
+            setIsMarkdownModalOpen={setIsMarkdownModalOpen}
+            markdown={markdown}
+          />
+          <RightSidebar files={sidebarSelection} />
         </>
       )}
       {
@@ -402,7 +315,8 @@ const HomePage = () => {
         activeTab === "6" && (
           <>
             <div className="sharedby">
-              <AdminTable data={adminData} onUpdate={handleAdminUpdate} />
+              <AdminTable data={adminData}
+                onUpdate={(record) => handleAdminUpdate(record, setAdminData)} />
             </div>
             <AdminSidebar config={config} />
           </>

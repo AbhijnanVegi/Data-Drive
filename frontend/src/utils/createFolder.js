@@ -1,4 +1,9 @@
 import api from "./api"
+/**
+ * Handles the creation of a folder.
+ * @param {string} path - The path of the folder to be created.
+ * @returns {Promise} - A promise that resolves with the response from the API.
+ */
 const handleFolderCreation = async (path) => {
     // make a POST request to the File Upload API with the FormData object and Rapid API headers
     console.log("path",path)

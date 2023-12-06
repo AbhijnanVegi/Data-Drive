@@ -1,6 +1,14 @@
 import { Menu } from 'antd';
 import { DesktopOutlined, ShareAltOutlined } from '@ant-design/icons';
 
+/**
+ * Renders the top menu component.
+ *
+ * @param {Object} props - The component props.
+ * @param {Function} props.handleMenuClick - The function to handle menu click events.
+ * @param {string} props.activeTab - The currently active tab.
+ * @returns {JSX.Element} The rendered top menu component.
+ */
 const TopMenu = ({ handleMenuClick, activeTab }) => (
     <Menu
         style={{ marginBottom: 'auto' }}

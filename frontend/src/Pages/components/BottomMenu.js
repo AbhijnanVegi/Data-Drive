@@ -8,14 +8,24 @@ function formatBytes(bytes) {
     else return (bytes / 1073741824).toFixed(2) + ' GB';
 }
 
-const BottomMenu = ({ handleMenuClick, activeTab, theme, user, handleLogout, isAdmin }) => (
+/**
+ * Renders the bottom menu component.
+ *
+ * @param {Object} props - The component props.
+ * @param {Function} props.handleMenuClick - The function to handle menu click events.
+ * @param {string} props.activeTab - The active tab key.
+ * @param {Object} props.user - The user object.
+ * @param {Function} props.handleLogout - The function to handle logout event.
+ * @param {boolean} props.isAdmin - Indicates whether the user is an admin or not.
+ * @returns {JSX.Element} The rendered bottom menu component.
+ */
+const BottomMenu = ({ handleMenuClick, activeTab, user, handleLogout, isAdmin }) => (
     <Menu
         style={{ marginBottom: 'auto' }}
         onClick={handleMenuClick}
         selectedKeys={[activeTab]}
         mode="inline"
         className="custom-menu"
-        theme={theme}
         items={[
             {
                 key: '4',
