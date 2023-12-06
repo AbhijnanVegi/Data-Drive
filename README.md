@@ -17,6 +17,7 @@ The backend is configured through to two TOML files. The first is `credentials.t
 ```toml
 # credentials.toml
 [auth]
+auth-url = "https://datafoundation.iiit.ac.in/api"
 secret-key = "supertopsecret"
 algorithm = "HS256"
 access-token-expire-minutes = 30
