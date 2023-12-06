@@ -61,25 +61,32 @@ class SharedFileModel(BaseModel):
 
 @files_router.post("/upload", response_model=MessageResponse)
 async def upload_file(
-    path: Annotated[str, Form()],
-    file: UploadFile,
-    username: Annotated[str, Depends(get_auth_user)],
+        path: Annotated[str, Form()],
+        file: UploadFile,
+        username: Annotated[str, Depends(get_auth_user)],
 ):
     """
     Upload a file to the specified path.
 
     This function performs the following checks:
+    
         - Check if the file already exists.
+        
         - Check if the parent directory exists.
+        
         - Check if the user has write permission for the parent directory.
+        
     Then it uploads the file to the specified path to the minio server and creates a database entry for the file in the
     mongo database. It also inherits the share permissions from the parent directory.
 
     Parameters:
+        
         - **path**: Path to upload the file to.
+        
         - **file**: File to upload.
 
     Returns:
+        
         - **message**: Message indicating whether the file was uploaded successfully or not.
     """
     fileObj = File.objects(path=path).first()
@@ -144,24 +151,30 @@ async def upload_file(
 
 @files_router.post("/mkdir", response_model=MessageResponse)
 def mkdir(
-    data: Annotated[PathForm, Body(embed=True)],
-    username: Annotated[str, Depends(get_auth_user)],
+        data: Annotated[PathForm, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user)],
 ):
     """
     Create a directory at the specified path.
 
     This function performs the following checks:
+    
         - Check if the directory already exists.
+        
         - Check if the parent directory exists.
+        
         - Check if the user has write permission for the parent directory.
+        
     Then it creates a directory at the specified path on the minio server and creates a database entry for the directory.
     For directories, the minio server stores a dummy object with the name of the directory and a trailing underscore "_"
     since minio does not support empty directories.
 
     Parameters:
+        
         - **path**: Path to create the directory at.
 
     Returns:
+        
         - **message**: Message indicating whether the directory was created successfully or not.
     """
     directory = File.objects(path=data.path).first()
@@ -183,22 +196,27 @@ def mkdir(
 
 @files_router.post("/list", response_model=List[ObjectModel])
 def list(
-    data: Annotated[PathForm, Body(embed=True)],
-    username: Annotated[str, Depends(get_auth_user_optional)],
+        data: Annotated[PathForm, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user_optional)],
 ):
     """
     List the files in the specified directory.
 
     This function performs the following checks:
+    
         - Check if the directory exists.
+        
         - Check if the user has read permission for the directory.
+        
     Then it lists the files and folder in the specified directory on the minio server and their associated information
     including the path, whether it is a directory, last modified time, size and metadata.
 
     Parameters:
+        
         - **path**: Path to list the files in.
 
     Returns:
+        
         - List of files and folders in the specified directory.
     """
     directory = File.objects(path=data.path).first()
@@ -237,8 +255,8 @@ class DuResponse(BaseModel):
 
 @files_router.get("/du/{path:path}", response_model=DuResponse)
 def du(
-    path: str,
-    username: Annotated[str, Depends(get_auth_user_optional)],
+        path: str,
+        username: Annotated[str, Depends(get_auth_user_optional)],
 ):
     directory = File.objects(path=path).first()
     if not directory or not directory.is_dir:
@@ -262,24 +280,30 @@ def du(
 
 @files_router.post("/delete", response_model=MessageResponse)
 def delete(
-    data: Annotated[PathForm, Body(embed=True)],
-    username: Annotated[str, Depends(get_auth_user)],
+        data: Annotated[PathForm, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user)],
 ):
     """
     Delete the file/folder specified by the path.
 
     This function performs the following checks:
+    
         - Check if the file/folder exists.
+        
         - Check if user is trying to delete their home directory.
+        
         - Check if the user has write permission for the file/folder.
+        
     Then it deletes the file/folder specified by the path on the minio server and deletes the file database entries and
     share database entries associated with the file/folder. If the file/folder is a directory, it also deletes all the
     files and folders inside the directory.
 
     Parameters:
+        
         - **path**: Path to delete the file/folder at.
 
     Returns:
+        
         - **message**: Message indicating whether the file/folder was deleted successfully or not.
     """
     file = File.objects(path=data.path).first()
@@ -327,9 +351,13 @@ def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)
     Get the file specified by the path.
 
     This function performs the following checks:
+    
         - Check if the file exists.
+        
         - Check if the path points to a file and not a directory.
+        
         - Check if the user has read permission for the file.
+        
     Then it gets the file specified by the path from the minio server and returns it.
     """
     file = File.objects(path=path).first()
@@ -362,10 +390,10 @@ def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)
 
 @files_router.post("/share", response_model=MessageResponse)
 def share(
-    path: Annotated[str, Body(embed=True)],
-    parent_username: Annotated[str, Depends(get_auth_user)],
-    child_username: Annotated[str, Body(embed=True)],
-    perm: Annotated[Permission, Body(embed=True)] = Permission.READ,
+        path: Annotated[str, Body(embed=True)],
+        parent_username: Annotated[str, Depends(get_auth_user)],
+        child_username: Annotated[str, Body(embed=True)],
+        perm: Annotated[Permission, Body(embed=True)] = Permission.READ,
 ):
     """
     Share the file specified by the path with the user specified by the username.
@@ -452,8 +480,8 @@ def share(
 
 @files_router.post("/list_shared_with", response_model=List[SharedFileModel])
 def get_shared_with(
-    username: Annotated[str, Depends(get_auth_user_optional)],
-    path: Annotated[str, Body(embed=True)] = None,
+        username: Annotated[str, Depends(get_auth_user_optional)],
+        path: Annotated[str, Body(embed=True)] = None,
 ):
     """
     Lists the files shared with the user.
@@ -498,7 +526,7 @@ def get_shared_with(
             if shared_file:
                 if shared_file.file.is_dir:
                     for obj in mc.list_objects(
-                        MINIO_BUCKET, prefix=path + "/", recursive=False
+                            MINIO_BUCKET, prefix=path + "/", recursive=False
                     ):
                         if obj.object_name[-1] == "_":
                             continue
@@ -544,7 +572,7 @@ def get_shared_with(
 
 @files_router.post("/list_shared_by", response_model=List[SharedFileModel])
 def get_shared_by(
-    username: Annotated[str, Depends(get_auth_user_optional)],
+        username: Annotated[str, Depends(get_auth_user_optional)],
 ):
     """
     Lists all the explicitly shared files/directories by the user.
@@ -576,16 +604,19 @@ def get_shared_by(
 
 @files_router.post("/unshare", response_model=MessageResponse)
 def unshare(
-    path: Annotated[str, Body(embed=True)],
-    child_username: Annotated[str, Body(embed=True)],
-    parent_username: Annotated[str, Depends(get_auth_user)],
+        path: Annotated[str, Body(embed=True)],
+        child_username: Annotated[str, Body(embed=True)],
+        parent_username: Annotated[str, Depends(get_auth_user)],
 ):
     """
     Unshare the file specified by the path with the user specified by the username.
 
     This function performs the following checks:
+    
         - Check if the file exists.
+        
         - Check if the logged-in user is the owner of the file.
+        
         - Check if the file being pointed by the path is explicitly shared with the user.
 
     Then it deletes the share database entry for the file and all the files inside the directory if the file is a
@@ -638,23 +669,27 @@ def unshare(
                 shared_file.delete()
                 refresh_share_perms(parent_username)
                 return {"message": "File unshared successfully!"}
-    
 
 
 @files_router.post("/copy", response_model=MessageResponse)
 def copy(
-    src_path: Annotated[str, Body(embed=True)],
-    dest_path: Annotated[str, Body(embed=True)],
-    username: Annotated[str, Depends(get_auth_user)],
+        src_path: Annotated[str, Body(embed=True)],
+        dest_path: Annotated[str, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user)],
 ):
     """
     Copies the file/folder specified by the src_path to the destination folder specified by the dest_path.
 
     This function performs the following checks:
+    
         - Check if the source file/folder exists.
+        
         - Check if the destination folder exists.
+        
         - Check if the destination is a directory.
+        
         - Check if the user has write permission for the destination folder.
+        
         - Check if the user has read permission for the source file/folder.
 
     Then it copies the file/folder specified by the src_path to the destination folder specified by the dest_path on the
@@ -697,24 +732,29 @@ def copy(
     if quota_user.storage_used + copy_size > quota_user.storage_quota:
         raise HTTPException(status_code=400, detail="User storage quota exceeded!")
 
-    if File.objects(path=dest_path + src_path[len(parent_path) :]).first():
+    if File.objects(path=dest_path + src_path[len(parent_path):]).first():
         raise HTTPException(
             status_code=400, detail="Destination file/folder already exists!"
         )
 
     if src_file.is_dir:
+
+        extra = ""
+        if File.objects(path=dest_path + extra + src_path[len(parent_path):]).first():
+            extra += "/_copy"
+
         dest_public = dest_file.public
 
         for obj in mc.list_objects(MINIO_BUCKET, prefix=src_path + "/", recursive=True):
             mc.copy_object(
                 MINIO_BUCKET,
-                dest_path + obj.object_name[len(parent_path) :],
+                dest_path + obj.object_name[len(parent_path):],
                 minio.commonconfig.CopySource(MINIO_BUCKET, obj.object_name),
             )
 
         for file in File.objects(path__startswith=src_path):
             File(
-                path=dest_path + file.path[len(parent_path) :],
+                path=dest_path + file.path[len(parent_path):],
                 size=file.size,
                 owner=dest_file.owner,
                 public=dest_public,
@@ -723,11 +763,11 @@ def copy(
     else:
         mc.copy_object(
             MINIO_BUCKET,
-            dest_path + src_path[len(parent_path) :],
+            dest_path + src_path[len(parent_path):],
             minio.commonconfig.CopySource(MINIO_BUCKET, src_path),
         )
         File(
-            path=dest_path + src_file.path[len(parent_path) :],
+            path=dest_path + src_file.path[len(parent_path):],
             size=src_file.size,
             owner=dest_file.owner,
             public=src_file.public,
@@ -744,18 +784,23 @@ def copy(
 
 @files_router.post("/move", response_model=MessageResponse)
 def move(
-    src_path: Annotated[str, Body(embed=True)],
-    dest_path: Annotated[str, Body(embed=True)],
-    username: Annotated[str, Depends(get_auth_user)],
+        src_path: Annotated[str, Body(embed=True)],
+        dest_path: Annotated[str, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user)],
 ):
     """
     Moves the file/folder specified by the src_path to the destination folder specified by the dest_path.
 
     This function performs the following checks:
+    
         - Check if the source file/folder exists.
+        
         - Check if the destination folder exists.
+        
         - Check if the destination is a directory.
+        
         - Check if the user has write permission for the destination folder.
+        
         - Check if the user has write permission for the source file/folder.
 
     Then it moves the file/folder specified by the src_path to the destination folder specified by the dest_path on the
@@ -799,14 +844,14 @@ def move(
         for obj in mc.list_objects(MINIO_BUCKET, prefix=src_path + "/", recursive=True):
             mc.copy_object(
                 MINIO_BUCKET,
-                dest_path + obj.object_name[len(parent_path) :],
+                dest_path + obj.object_name[len(parent_path):],
                 minio.commonconfig.CopySource(MINIO_BUCKET, obj.object_name),
             )
             mc.remove_object(MINIO_BUCKET, obj.object_name)
 
         for file in File.objects(path__startswith=src_path):
             shares = SharedFile.objects(file=file)
-            file.path = dest_path + file.path[len(parent_path) :]
+            file.path = dest_path + file.path[len(parent_path):]
             file.owner = dest_file.owner
             file.public = dest_public
             file.save()
@@ -819,13 +864,13 @@ def move(
     else:
         obj = mc.copy_object(
             MINIO_BUCKET,
-            dest_path + src_path[len(parent_path) :],
+            dest_path + src_path[len(parent_path):],
             minio.commonconfig.CopySource(MINIO_BUCKET, src_path),
         )
         mc.remove_object(MINIO_BUCKET, src_path)
 
         to_move_file = File.objects(path=src_path).first()
-        to_move_file.path = dest_path + to_move_file.path[len(parent_path) :]
+        to_move_file.path = dest_path + to_move_file.path[len(parent_path):]
         to_move_file.owner = dest_file.owner
         to_move_file.public = dest_public
         to_move_file.save()
@@ -837,15 +882,111 @@ def move(
         return {"message": "File/folder moved successfully!"}
 
 
+@files_router.post("/rename", response_model=MessageResponse)
+def rename(
+        src_path: Annotated[str, Body(embed=True)],
+        new_name: Annotated[str, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user)],
+):
+    """
+    Renames the file/folder specified by the src_path to the new_name.
+    The new folder will be in the same directory as the old one.
+    """
+
+    src_file = File.objects(path=src_path).first()
+
+    if not src_file:
+        raise HTTPException(status_code=400, detail="File does not exist!")
+
+    if not src_file.can_write(usr):
+        raise HTTPException(status_code=400, detail="You do not have permission to rename this file!")
+
+    # check if the new name is valid, i.e. it does not contain any slashes, and it does not already exist
+    if "/" in new_name:
+        raise HTTPException(status_code=400, detail="Invalid name!")
+
+    if File.objects(path=os.path.dirname(src_path) + "/" + new_name).first():
+        raise HTTPException(status_code=400, detail="File already exists with that name!")
+
+    if not src_file.is_dir:
+        mc.copy_object(
+            MINIO_BUCKET,
+            os.path.dirname(src_path) + "/" + new_name,
+            minio.commonconfig.CopySource(MINIO_BUCKET, src_path),
+        )
+        mc.remove_object(MINIO_BUCKET, src_path)
+
+        src_file.path = os.path.dirname(src_path) + "/" + new_name
+        src_file.save()
+
+        return {"message": "File renamed successfully!"}
+    else:
+
+        for obj in mc.list_objects(MINIO_BUCKET, prefix=src_path + "/", recursive=True):
+            mc.copy_object(
+                MINIO_BUCKET,
+                os.path.dirname(src_path) + "/" + new_name + obj.object_name[len(src_path):],
+                minio.commonconfig.CopySource(MINIO_BUCKET, obj.object_name),
+            )
+            mc.remove_object(MINIO_BUCKET, obj.object_name)
+
+        for file in File.objects(path__startswith=src_path):
+            file.path = os.path.dirname(src_path) + "/" + new_name + file.path[len(src_path):]
+            file.save()
+
+        return {"message": "Folder renamed successfully!"}
+
+
+@files_router.get("/get_all_files/{search_path:path}", response_model=List[ObjectModel])
+def get_all_files(
+        search_path: str,
+        username: Annotated[str, Depends(get_auth_user_optional)],
+):
+    """
+    Lists all the files in the specified directory.
+    """
+
+    search_path_file = File.objects(path=search_path).first()
+
+    if not search_path_file:
+        raise HTTPException(status_code=400, detail="File does not exist!")
+
+    if search_path_file.is_dir is False:
+        raise HTTPException(status_code=400, detail="Path does not point to a directory!")
+
+    if username:
+        user = User.objects(username=username).first()
+    else:
+        raise HTTPException(status_code=400, detail="You are not logged in!")
+
+    if not search_path_file.can_read(user):
+        raise HTTPException(status_code=400, detail="You do not have permission to access this directory!")
+
+    obj_json = []
+
+    for obj in mc.list_objects(MINIO_BUCKET, search_path + "/", recursive=True):
+        obj_json.append(
+            {
+                "path": obj.object_name,
+                "is_dir": obj.is_dir,
+                "last_modified": obj.last_modified,
+                "size": obj.size,
+                "metadata": obj.metadata,
+            }
+        )
+
+    return obj_json
+
+
 class TokenResponse(BaseModel):
     token: str
 
 
 @files_router.get("/token/{path:path}", response_model=TokenResponse)
 def download_file(
-    path: str,
-    username: Annotated[str, Depends(get_auth_user_optional)],
-    background_tasks: BackgroundTasks,
+        path: str,
+        username: Annotated[str, Depends(get_auth_user_optional)],
+        background_tasks: BackgroundTasks,
 ):
     background_tasks.add_task(clean_expired_jobs)
     file = File.objects(path=path).first()
@@ -903,15 +1044,17 @@ def download(token: str):
 
 @files_router.post("/mark_public", response_model=MessageResponse)
 def mark_public(
-    path: Annotated[str, Body(embed=True)],
-    username: Annotated[str, Depends(get_auth_user)],
-    perm: Annotated[Permission, Body(embed=True)] = Permission.READ,
+        path: Annotated[str, Body(embed=True)],
+        username: Annotated[str, Depends(get_auth_user)],
+        perm: Annotated[Permission, Body(embed=True)] = Permission.READ,
 ):
     """
     Mark a file or directory as public.
 
     This function performs the following checks:
+    
         - Check if the file/dir exists.
+        
         - Check if the user has write permission for the file/dir.
 
     Then it marks the file/dir as public and updates the database entries for the file/dir and all the files/dirs inside
@@ -951,7 +1094,7 @@ def refresh_share_perms(username: str):
 
     for explicit_share in SharedFile.objects(owner=user, explicit=True):
         for file in File.objects(path__startswith=explicit_share.file.path + "/"):
-            print(file.path,explicit_share.user.username)
+            print(file.path, explicit_share.user.username)
             existing_share = SharedFile.objects(
                 user=explicit_share.user, file=file, explicit=False, owner=file.owner
             ).first()

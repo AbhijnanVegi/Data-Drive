@@ -1,14 +1,26 @@
 import { ChonkyIconName, defineFileAction } from "chonky";
 
-const uploadFileAction = defineFileAction({
-  id: "upload",
+const uploadFolderAction = defineFileAction({
+  id: "upload_folder",
   fileFilter: (file) => file.isDir,
   button: {
-    name: "Upload",
-    tooltip: "Upload a file",
+    name: "Upload folder",
+    tooltip: "Upload a folder",
     toolbar: true,
     contextMenu: true,
     icon: ChonkyIconName.upload,
+  },
+});
+
+const uploadFileAction = defineFileAction({
+  id: "upload_file",
+  fileFilter: (file) => !file.isDir,
+  button: {
+      name: "Upload file",
+      tooltip: "Upload a file",
+      toolbar: true,
+      contextMenu: true,
+      icon: ChonkyIconName.upload,
   },
 });
 
@@ -89,6 +101,7 @@ const moveFiles = defineFileAction({
 
 export const customActions = [
   uploadFileAction,
+  uploadFolderAction,
   createFolderAction,
   downloadFiles,
   deleteFiles,
