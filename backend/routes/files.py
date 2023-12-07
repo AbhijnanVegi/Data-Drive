@@ -27,7 +27,7 @@ from models.common import Permission
 from models.job import Job, Status
 
 from storage.client import minio_client as mc
-from tasks.files import create_job, clean_expired_jobs
+from tasks.files import create_job, clean_expired_jobs, upload_file_to_minio
 
 files_router = APIRouter(
     prefix="",
@@ -64,6 +64,7 @@ async def upload_file(
         path: Annotated[str, Form()],
         file: UploadFile,
         username: Annotated[str, Depends(get_auth_user)],
+        background_tasks: BackgroundTasks,
 ):
     """
     Upload a file to the specified path.
@@ -116,31 +117,14 @@ async def upload_file(
         return {"message": "User storage quota exceeded!"}
 
     try:
-        mc.put_object(
-            MINIO_BUCKET, path, file.file, -1, content_type, part_size=10 * 1024 * 1024
+        background_tasks.add_task(
+            upload_file_to_minio,
+            path,
+            file,
+            content_type,
+            user,
+            directory
         )
-
-        # Create database entry for file
-        file = File(
-            path=path,
-            size=file.size,
-            owner=user,
-            public=directory.public,
-        ).save()
-
-        # Update user storage used
-        quota_user.storage_used += file.size
-        quota_user.save()
-
-        # Inherit permissions from parent directory
-        shares = SharedFile.objects(file=directory)
-        for share in shares:
-            SharedFile(
-                file=file,
-                user=share.user,
-                permission=share.permission,
-                owner=share.owner,
-            ).save()
 
         return {"message": "File uploaded successfully!"}
 

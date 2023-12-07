@@ -66,3 +66,40 @@ def clean_expired_jobs():
             os.system(f"rm -rf /tmp/{job.token}")
 
         job.delete()
+
+def upload_file_to_minio(path, file, content_type, user, directory):
+    print("Uploading")
+    try:
+        mc.put_object(
+            MINIO_BUCKET,
+            path,
+            file.file,
+            -1,
+            content_type=content_type,
+            part_size=10*1024*1024,
+        )
+
+        file = File(
+                path=path,
+                size=file.size,
+                owner=user,
+                public=directory.public,
+            ).save()
+
+        # Update user storage used
+        user.storage_used += file.size
+        user.save()
+
+        # Inherit permissions from parent directory
+        shares = SharedFile.objects(file=directory)
+        for share in shares:
+            SharedFile(
+                file=file,
+                user=share.user,
+                permission=share.permission,
+                owner=share.owner,
+            ).save()
+
+        print(f"File uploaded to {path}")
+    except Exception as e:
+        print(e)
