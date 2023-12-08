@@ -11,4 +11,5 @@ allowed-file-extensions = [
     ".tex",
     ".md",
     ".mp4",
+    "mkv",
 ]

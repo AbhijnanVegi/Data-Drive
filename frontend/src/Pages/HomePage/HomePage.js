@@ -39,6 +39,9 @@ import { handleCreateFolderFormSubmit } from "../../utils/modalutils/createfolde
 import { CustomFileBrowser } from "../components/CustomFileBrowser";
 import { SharedFileBrowser } from "../components/SharedFileBrowser";
 import handleFolderCreation from "../../utils/createFolder";
+import {toast, ToastContainer} from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import {wait} from "@testing-library/user-event/dist/utils";
 
 setChonkyDefaults({ iconComponent: ChonkyIconFA });
 
@@ -74,7 +77,11 @@ const HomePage = () => {
   const [config, setConfig] = useState({})
   const [isMarkdownModalOpen, setIsMarkdownModalOpen] = useState(false);
   const [markdown, setMarkdown] = useState('');
-
+  // const [uploadedFiles, setUploadedFiles] = useState(0);
+  let m_uploadedFiles = new Map();
+  let m_totalFiles = new Map();
+  let uploadFileReqId = 0;
+  
   const showModal = () => {
     setIsCreateFolderModalOpen(true);
   };
@@ -110,12 +117,12 @@ const HomePage = () => {
 
   const fileActions = customActions;
   const [lastUploadedFile, setLastUploadedFile] = useState(null);
-  const uploadFile = async (file, filename) => {
+  const uploadFile = async (file, filename, toastId, reqId) => {
     // if there are '/' in the filename, then we need to create the folders
 
     const _path = path;
     const _filename = filename;
-
+    
     if (filename.includes("/")) {
       // recursively create the folders
       const folders = filename.split("/");
@@ -142,14 +149,32 @@ const HomePage = () => {
     console.log("path", _path)
     console.log("filename", _filename)
     console.log("file", file)
+    
     const response = await handleFileUpload(file, _path + "/" + _filename);
+    
     if (response.status === 200) {
+
       const tempElement = { id: _path + "/" + _filename, isDir: false, name: _filename, ext: _filename.split('.').pop() };
       setFiles((files) => [...files, tempElement]);
       setLastUploadedFile(tempElement);
-      notifySuccess(response.data.message);
+      // notifySuccess(response.data.message);
+      
+      m_uploadedFiles[reqId]++;
     } else {
-      notifyFailure(response.data.message);
+      // toast.dismiss(toastId);
+      m_totalFiles[reqId]--;
+      // notifyFailure(response.data.message);
+    }
+
+    if (m_totalFiles[reqId] !== 0){
+      toast.update(toastId, {
+        render: `Uploaded ${m_uploadedFiles[reqId]}/${m_totalFiles[reqId]} files`,
+        progress: m_uploadedFiles[reqId] / m_totalFiles[reqId],
+      });
+    }
+    if (m_uploadedFiles[reqId] === m_totalFiles[reqId]) {
+      toast.dismiss(toastId);
+      notifySuccess("Upload complete");
     }
   };
   const [rerender, setRerender] = useState(false);
@@ -179,18 +204,37 @@ const HomePage = () => {
       let input = document.createElement("input");
       input.type = "file";
       input.webkitdirectory = true;
-
+      
+      const reqId = uploadFileReqId;
+      uploadFileReqId++;
+      m_uploadedFiles[reqId] = 0;
+      m_totalFiles[reqId] = 0;
+        
       input.onchange = (_) => {
         // log the file name
         let file = Array.from(input.files);
-
+        const totalFiles = file.length;
+        console.log("totalFiles", totalFiles);
+        m_totalFiles[reqId] = totalFiles;
+        
+        let toastId = toast.info(`Uploading folder`, {
+          autoClose: false,
+          hideProgressBar: false,
+          closeOnClick: false,
+          progress: 0,
+          position: "bottom-center",
+        });
+        
+        let ctr = 0;
         //loop through the files and upload them
         file.forEach((file) => {
+          ctr++;
           let fie_upload = [file];
           let filename = fie_upload[0].webkitRelativePath;
           console.log("file", fie_upload);
           console.log("filename", filename);
-          uploadFile(fie_upload, filename);
+          // setTimeout(() => { uploadFile(fie_upload, filename, toastId, reqId); }, ctr*2000+1000);
+          uploadFile(fie_upload, filename, toastId, reqId);
         });
       };
       input.click();
@@ -200,29 +244,39 @@ const HomePage = () => {
       let input = document.createElement("input");
       input.type = "file";
       input.multiple = true;
-
+      const reqId = uploadFileReqId;
+      uploadFileReqId++;
+      m_uploadedFiles[reqId] = 0;
+      m_totalFiles[reqId] = 0;
+      
       input.onchange = (_) => {
         // log the file name
         let file = Array.from(input.files);
-
+        const totalFiles = file.length;
+        console.log("totalFiles", totalFiles);
+        m_totalFiles[reqId] = totalFiles;
+        
+        let toastId = toast.info(`Uploading files`, {
+          autoClose: false,
+          hideProgressBar: false,
+          closeOnClick: false,
+          progress: 0,
+          position: "bottom-center",
+        });
+        
+        let ctr = 0;
         file.forEach((file) => {
+          ctr++;
           // create an array of 1 file to upload
           let fie_upload = [file];
           let filename = fie_upload[0].name;
           console.log("file", fie_upload);
           console.log("filename", filename);
-          uploadFile(fie_upload, filename);
+          // setTimeout(() => { uploadFile(fie_upload, filename, toastId, reqId); }, ctr*2000);
+          uploadFile(fie_upload, filename, toastId, reqId);
         });
       };
-
-
-      // input.onchange = (_) => {
-      //   let file = Array.from(input.files);
-      //   console.log(file);
-      //   console.log("file selected");
-      //   let filename = file[0].name;
-      //   // uploadFile(file, filename);
-      // };
+      
       input.click();
       console.log("uploading file")
     }
@@ -392,6 +446,7 @@ const HomePage = () => {
         )
       }
       <Toaster />
+      <ToastContainer />
     </div>
   );
 };

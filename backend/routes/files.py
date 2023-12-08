@@ -105,7 +105,8 @@ async def upload_file(
     file_ext = os.path.splitext(file.filename)[1]
     ALLOWED_FILE_EXTENSIONS = app_config.allowed_file_extensions
     if ALLOWED_FILE_EXTENSIONS and file_ext not in ALLOWED_FILE_EXTENSIONS:
-        return {"message": "File type not allowed!"}
+        raise HTTPException(status_code=400, detail="File type not allowed!")
+        # return {"message": "File type not allowed!"}
 
     content_type = mimetypes.guess_type(path)[0]
     if content_type is None:
