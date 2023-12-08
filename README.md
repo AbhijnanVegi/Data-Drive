@@ -13,7 +13,7 @@ Technologies - FastAPI, ReactJS, MongoDB, MinIO
 - Dynamic server config updates without restart
 - Easy to deploy using docker-compose
 
-More documentation available in the [Here](/docs/).
+More documentation available [here](/docs/).
 
 ## Production Setup
 Configure `credentials.toml` in `/backend` to point to the correct database and minio server. If you are using docker for mongodb and minio, uncomment the commented host addresses.
