@@ -5,7 +5,7 @@ import zipfile
 from typing import List
 from datetime import datetime, timedelta
 
-from models.file import File
+from models.file import File, SharedFile
 from models.job import Job, Status
 from storage.client import minio_client as mc
 from config import app_config, MINIO_BUCKET

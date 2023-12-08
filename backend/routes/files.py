@@ -114,7 +114,7 @@ async def upload_file(
 
     # Get quota user
     quota_user = User.objects(username=path.split("/")[0]).first()
-    if user.storage_used + file.size > user.storage_quota:
+    if quota_user.storage_used + file.size > quota_user.storage_quota:
         return {"message": "User storage quota exceeded!"}
 
     try:
@@ -123,7 +123,7 @@ async def upload_file(
             path,
             file,
             content_type,
-            user,
+            quota_user,
             directory
         )
 
@@ -308,6 +308,7 @@ def delete(
             status_code=400,
             detail="You do not have permission to delete this file/folder!",
         )
+    quota_user = User.objects(username=data.path.split("/")[0]).first()
 
     if is_dir:
         mc.remove_object(MINIO_BUCKET, data.path + "/_")
@@ -319,14 +320,18 @@ def delete(
         # delete shared file objects associated with files in the directory
         for file in File.objects(path__startswith=data.path):
             SharedFile.objects(file=file).delete()
+            quota_user.storage_used -= file.size
             file.delete()
         for error in errors:
             print("Error occurred when deleting " + error.object_name)
+        quota_user.save()
         return {"message": "Folder deleted successfully!"}
     else:
         mc.remove_object(MINIO_BUCKET, data.path)
         SharedFile.objects(file=file).delete()
+        quota_user.storage_used -= file.size
         file.delete()
+        quota_user.save()
         return {"message": "File deleted successfully!"}
 
 
