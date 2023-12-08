@@ -13,7 +13,7 @@ Technologies - FastAPI, ReactJS, MongoDB, MinIO
 - Dynamic server config updates without restart
 - Easy to deploy using docker-compose
 
-More documentation available in the [Here](/docs/).
+More documentation available [here](/docs/).
 
 ## Production Setup
 Configure `credentials.toml` in `/backend` to point to the correct database and minio server. If you are using docker for mongodb and minio, uncomment the commented host addresses.
@@ -26,12 +26,12 @@ docker-compose up -d
 ## Development Setup
 
 ### Backend Configuration
-The backend is configured through to two TOML files. The first is `credentials.toml` which contains the credentials for the JWT tokens and other services. The second is `settings.toml` which contains the configuration for the database and the server.
+The backend is configured through to two TOML files. The first is `credentials.toml` which contains the credentials for the JWT tokens and other services. The second is `settings.toml` which contains the configuration for the database and the server. To use the data foundation system's authentication, uncomment the `auth-url` field in `credentials.toml` and set it to `https://datafoundation.iiit.ac.in/api`.
 
 ```toml
 # credentials.toml
 [auth]
-auth-url = "https://datafoundation.iiit.ac.in/api"
+# auth-url = "https://datafoundation.iiit.ac.in/api"
 secret-key = "supertopsecret"
 algorithm = "HS256"
 access-token-expire-minutes = 30

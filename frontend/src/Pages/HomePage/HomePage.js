@@ -23,6 +23,7 @@ import { fetchSharedByData } from "../../utils/fetchSharedByData";
 import SharedByTable from "../components/SharedByTable";
 import { fetchConfig } from "../../utils/fetchConfig";
 import { AdminSidebar } from "../components/AdminPageSidebar";
+import { useLocation } from "react-router-dom";
 import { handleUnshare, handleShareFolderFormSubmit } from "../../utils/modalutils/shareutils";
 import { handleMoveFileFormSubmit, handleCopyFileFormSubmit } from "../../utils/modalutils/copyandmoveutils";
 import TopMenu from "../components/TopMenu";
@@ -34,7 +35,6 @@ import { handleAdminUpdate } from "../../utils/adminupdate";
 import Markdown from 'react-markdown'
 import { setTwoToneColor } from '@ant-design/icons';
 import { TransferFileModal } from "../components/TransferFileModal";
-import { useLocation } from "react-router-dom";
 import { handleCreateFolderFormSubmit } from "../../utils/modalutils/createfolder";
 import { CustomFileBrowser } from "../components/CustomFileBrowser";
 import { SharedFileBrowser } from "../components/SharedFileBrowser";
@@ -42,6 +42,9 @@ import handleFolderCreation from "../../utils/createFolder";
 import {toast, ToastContainer} from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {wait} from "@testing-library/user-event/dist/utils";
+import DeepSearchModal from "../components/DeepSearchModal";
+import { Button } from "antd";
+
 
 setChonkyDefaults({ iconComponent: ChonkyIconFA });
 
@@ -51,7 +54,7 @@ setChonkyDefaults({ iconComponent: ChonkyIconFA });
  */
 const HomePage = () => {
   const [files, setFiles] = useState([]);
-  const urlPathRef = useRef("/home");
+  // const urlPathRef = useRef("/home");
   const [sharedfiles, setSharedFiles] = useState([]); // array of file names [file1, file2, file3
   const [path, setPath] = useState(null);
   const [sharedpath, setSharedPath] = useState(null);
@@ -77,6 +80,9 @@ const HomePage = () => {
   const [config, setConfig] = useState({})
   const [isMarkdownModalOpen, setIsMarkdownModalOpen] = useState(false);
   const [markdown, setMarkdown] = useState('');
+  const [isDeepSearchModalOpen, setIsDeepSearchModalOpen] = useState(false);
+  const [login, setLogin] = useState(false);
+
   // const [uploadedFiles, setUploadedFiles] = useState(0);
   let m_uploadedFiles = new Map();
   let m_totalFiles = new Map();
@@ -110,7 +116,7 @@ const HomePage = () => {
     if (e.key === "1")
       console.log("active Tab is 1")
     // window.location.href="/home"
-    console.log("urlPathRef is now", urlPathRef.current)
+    // console.log("urlPathRef is now", urlPathRef.current)
     setActiveTab(e.key);
     handleTabChange(e.key);
   };
@@ -180,12 +186,12 @@ const HomePage = () => {
   const [rerender, setRerender] = useState(false);
 
   useEffect(() => {
-    fetchUserInfo(setPath, setSharedPath, setFolders, setUser, setIsAdmin);
+    fetchUserInfo(setPath, setSharedPath, setFolders, setUser, setIsAdmin, setLogin);
   }, []);
   useEffect(() => {
     if (path !== null && activeTab === "1")
-      fetchFiles(path, setFolders, setFiles, setPictures);
-  }, [path, activeTab, lastUploadedFile, rerender]);
+      fetchFiles(path, setFolders, setFiles, setPictures, login);
+  }, [path, activeTab, lastUploadedFile, rerender, login]);
   useEffect(() => {
     if (sharedpath !== null && activeTab === "2") {
       fetchSharedFiles(sharedpath, user, setSharedFolders, setSharedFiles, setSharedPictures);
@@ -337,35 +343,42 @@ const HomePage = () => {
     }
   }, [activeTab])
 
-  useEffect(() => {
-    // console.log(urlPath)
-    console.log("urlPathRef useEffect called", urlPathRef.current)
-    if (urlPathRef.current === "/home")
-      setPath(user.username);
-    else {
-      setPath(urlPathRef.current.substring(1));
-    }
-    console.log("Effecting")
-  }, [urlPathRef.current])
+  // useEffect(() => {
+  //   // console.log(urlPath)
+  //   console.log("urlPathRef useEffect called", urlPathRef.current)
+  //   if (urlPathRef.current === "/home")
+  //     setPath(user.username);
+  //   else {
+  //     setPath(urlPathRef.current.substring(1));
+  //   }
+  //   console.log("Effecting")
+  // }, [urlPathRef.current])
 
-  const location = useLocation();
-  if (location.pathname !== "/home") {
-    urlPathRef.current = location.pathname;
-    console.log("location", location.pathname)
-  }
+  // const location = useLocation();
+  // if (location.pathname !== "/home") {
+  //   urlPathRef.current = location.pathname;
+  //   console.log("location", location.pathname)
+  // }
 
 
   return (
     <div className="full-page">
       <div className="menu-container">
         <h1>DataDrive</h1>
-        <TopMenu handleMenuClick={handleMenuClick} activeTab={activeTab} />
-        <div className="user-info">
-          <BottomMenu handleMenuClick={handleMenuClick} activeTab={activeTab} user={user} handleLogout={() => handleLogout(notifyFailure)} isAdmin={isAdmin} />
-        </div>
+        {
+          login && (
+            <>
+              <TopMenu handleMenuClick={handleMenuClick} activeTab={activeTab} setPath={setPath} user={user}/>
+              <div className="user-info">
+                <BottomMenu handleMenuClick={handleMenuClick} activeTab={activeTab} user={user} handleLogout={() => handleLogout(notifyFailure)} isAdmin={isAdmin} />
+              </div>
+            </>
+          )
+        }
       </div>
       {activeTab === "1" && (
         <>
+          <DeepSearchModal open={isDeepSearchModalOpen} onClose={() => setIsDeepSearchModalOpen(false)} path={path} setPath={setPath} setIsDeepSearchModalOpen={setIsDeepSearchModalOpen} />
           <CustomFileBrowser
             loading={loading}
             isCreateFolderModalOpen={isCreateFolderModalOpen}
@@ -401,10 +414,12 @@ const HomePage = () => {
             handleAction={handleAction}
           />
           <RightSidebar files={sidebarSelection} />
+          <Button className="deepsearchbutton" type="primary" onClick={() => setIsDeepSearchModalOpen(true)}>Deep Search</Button>
         </>
       )}
       {activeTab === "2" && (
         <>
+          <DeepSearchModal open={isDeepSearchModalOpen} onClose={() => setIsDeepSearchModalOpen(false)} path={sharedpath} setPath={setSharedPath} setIsDeepSearchModalOpen={setIsDeepSearchModalOpen} />
           <SharedFileBrowser
             loading={loading}
             isCreateFolderModalOpen={isCreateFolderModalOpen}
@@ -424,6 +439,7 @@ const HomePage = () => {
             markdown={markdown}
           />
           <RightSidebar files={sidebarSelection} />
+          <Button className="deepsearchbutton" type="primary" onClick={() => setIsDeepSearchModalOpen(true)}>Deep Search</Button>
         </>
       )}
       {

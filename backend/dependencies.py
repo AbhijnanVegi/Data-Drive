@@ -70,12 +70,8 @@ def get_auth_user(token: Annotated[str, Depends(oauth2_scheme)], response: Respo
 
 
 def get_auth_user_optional(token: Annotated[str, Depends(oauth2_scheme)]):
-    if InvalidToken.objects(token=token).first() is not None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No user logged in!",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    if token is None or InvalidToken.objects(token=token).first() is not None:
+        return None
 
     payload = decode_jwt(token)
     username: str = payload.get("username")

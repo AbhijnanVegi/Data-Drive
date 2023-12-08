@@ -1,6 +1,7 @@
 import api from "../api";
 import { fetchSharedByData } from "../fetchSharedByData";
 import { notifyFailure, notifySuccess } from "../toaster";
+import showNotification from "../../Pages/components/Notification";
 
 
 /**
@@ -55,7 +56,8 @@ export const handleShareFolderFormSubmit = (values, selectedFiles, setIsShareFol
             await api.post("/mark_public", shareRequest)
                 .then((response) => {
                     console.log(response);
-                    notifySuccess(response.data.message);
+                    const domainname = window.location.host;
+                    showNotification(response.data.message + ": Click to Copy Link", domainname + "/" + tempid);
                 })
                 .catch((error) => {
                     console.log(error);
