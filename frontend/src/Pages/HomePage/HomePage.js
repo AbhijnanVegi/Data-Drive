@@ -160,9 +160,6 @@ const HomePage = () => {
     
     if (response.status === 200) {
 
-      const tempElement = { id: _path + "/" + _filename, isDir: false, name: _filename, ext: _filename.split('.').pop() };
-      setFiles((files) => [...files, tempElement]);
-      setLastUploadedFile(tempElement);
       // notifySuccess(response.data.message);
       
       m_uploadedFiles[reqId]++;
@@ -179,6 +176,9 @@ const HomePage = () => {
       });
     }
     if (m_uploadedFiles[reqId] === m_totalFiles[reqId]) {
+      const tempElement = { id: _path + "/" + _filename, isDir: false, name: _filename, ext: _filename.split('.').pop() };
+      setFiles((files) => [...files, tempElement]);
+      setLastUploadedFile(tempElement);
       toast.dismiss(toastId);
       notifySuccess("Upload complete");
     }
