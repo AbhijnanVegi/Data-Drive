@@ -9,7 +9,7 @@ const isImage = (file) => ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg'].includes(f
  * @param {string} element.last_modified - The last modified date of the element.
  * @returns {Object} - The created file element object.
  */
-const createFileElement = async (element) => {
+const createFileElement = async (element, lendir) => {
     const tempElement = {
         id: element.path,
         isDir: element.is_dir,
@@ -20,12 +20,19 @@ const createFileElement = async (element) => {
     if (tempElement.name !== '_') {
         tempElement.ext = tempElement.name.split('.').pop();
     }
-    if (isImage(tempElement)) {
-        const res = await api.get(`/get/${tempElement.id}`, {
-            responseType: 'blob',
-        });
-        tempElement.thumbnailUrl = URL.createObjectURL(res.data);
-        
+    if (lendir < 10) {
+        if (isImage(tempElement)) {
+            api.get(`/get/${tempElement.id}`, {
+                responseType: 'blob',
+            })
+                .then((res) => {
+                    tempElement.thumbnailUrl = URL.createObjectURL(res.data);
+                })
+                .catch((err) => {
+                    console.log("no need")
+                });
+
+        }
     }
     // return only if filename is not _
     if (tempElement.name !== '_') {

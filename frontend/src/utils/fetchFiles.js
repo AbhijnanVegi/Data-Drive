@@ -33,8 +33,13 @@ const fetchFiles = async (path, setFolders, setFiles, setPictures, login) => {
 
         const fileRequest = { data: { path } };
         const res = await api.post('/list', fileRequest);
+        const sizeofres = res.data.length;
         // only use those files for which the responses are not null
-        const tempFileArray = (await Promise.all(res.data.map(createFileElement))).filter(file => file !== null); console.log("tempFileArray", tempFileArray)
+        const tempFileArray = (
+            await Promise.all(
+                res.data.map(file => createFileElement(file, sizeofres))
+            )
+        ).filter(file => file !== null);
         setFiles(tempFileArray);
 
         const tempPictures = tempFileArray
