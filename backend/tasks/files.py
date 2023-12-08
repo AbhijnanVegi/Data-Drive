@@ -18,6 +18,8 @@ def create_job(token: str, files: List[File], username=None, prefix=None):
     folder_name = f"{token}"
     size = 0
     for i, file in enumerate(files):
+        if file.is_dir:
+            continue
         try:
             mc.fget_object(
                 MINIO_BUCKET,

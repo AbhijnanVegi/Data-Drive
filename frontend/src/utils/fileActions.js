@@ -23,7 +23,7 @@ export const downloadFile = (filePath, notifyFailure) => {
           if (res.data.status === "done") {
             clearInterval(interval);
             // window.open("/download/" + token);
-            fetch(`/download/${token}`)
+            fetch(`/api/download/${token}`)
               .then(response => response.blob())
               .then(blob => {
                 const url = window.URL.createObjectURL(blob);
@@ -41,6 +41,7 @@ export const downloadFile = (filePath, notifyFailure) => {
               });
           } else if (res.data.status === "failed") {
             notifyFailure("Download failed");
+            clearInterval(interval);
           }
         }).catch((err) => {
           console.log(err);
