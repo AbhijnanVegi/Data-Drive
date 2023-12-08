@@ -388,10 +388,12 @@ const HomePage = () => {
             setIsCreateFolderModalOpen={setIsCreateFolderModalOpen}
             setFiles={setFiles}
             isCopyFilesModalOpen={isCopyFilesModalOpen}
+            setIsCopyFilesModalOpen={setIsCopyFilesModalOpen}
             handleCopyFilesModalCancel={handleCopyFilesModalCancel}
             handleCopyFileFormSubmit={handleCopyFileFormSubmit}
             selectedFiles={selectedFiles}
             isMoveFilesModalOpen={isMoveFilesModalOpen}
+            setIsMoveFilesModalOpen={setIsMoveFilesModalOpen}
             handleMoveFilesModalCancel={handleMoveFilesModalCancel}
             handleMoveFileFormSubmit={handleMoveFileFormSubmit}
             rerender={rerender}

@@ -97,6 +97,7 @@ export const CustomFileBrowser = ({
                 <ShareFolderModal open={isShareFolderModalOpen}
                     onCancel={handleShareFolderModalCancel}
                     onSubmit={(values) => handleShareFolderFormSubmit(values, selectedFiles, setIsShareFolderModalOpen)} selectedFiles={selectedFiles} />
+                
                 <Modal
                     width={1000}
                     open={isMarkdownModalOpen}
