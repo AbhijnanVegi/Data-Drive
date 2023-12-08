@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta
 from typing import Annotated, List
+import requests
 
-from fastapi import APIRouter, Depends, HTTPException, Body, status
+from fastapi import APIRouter, Depends, HTTPException, Body, status, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr
 
-from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, app_config
+from config import AUTH_URL, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, app_config
 from dependencies import get_auth_user, MessageResponse, oauth2_scheme
 from models.common import Permission
 from models.user import User, InvalidToken
@@ -18,51 +19,13 @@ auth_router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-
-class RegisterForm(BaseModel):
-    username: str
-    email: EmailStr
-    password: str
-
-
-@auth_router.post("/register", response_model=MessageResponse)
-def register(data: Annotated[RegisterForm, Body(embed=True)]):
-    """
-    Register a new user.
-
-    - **username**: Username of the user.
-    - **email**: Email of the user.
-    - **password**: Password of the user.
-
-    Creates a new user with the given username, email and password and creates a home directory for the user.
-    """
-    # Get user data from request
-    username = data.username
-    email = data.email
-
-    if User.objects(email=email).first() or User.objects(username=username).first():
-        raise HTTPException(status_code=400, detail="User already exists")
-
-    user = User(
-        username=username,
-        email=email,
-        password=data.password,
-        storage_quota=app_config.default_user_quota,
-        permission=Permission(app_config.default_user_permission),
-    ).save()
-
-    # Create home directory for user
-    File(path=username, size=0, owner=user, is_dir=True).save()
-    return {"message": "User registered successfully!"}
-
-
 class Token(BaseModel):
     access_token: str
     token_type: str
 
 
 @auth_router.post("/login", response_model=Token)
-def login(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+def login(data: Annotated[OAuth2PasswordRequestForm, Depends()], response: Response):
     """
     Login a user.
 
@@ -75,14 +38,36 @@ def login(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     username = data.username
     password = data.password
 
+    # send request to auth server
+    if AUTH_URL:
+        r = requests.post(
+            f"{AUTH_URL}/login",
+            json={"email": username, "password": password},
+        )
+
+        if r.status_code != 200:
+            raise HTTPException(status_code=400, detail="Invalid credentials")
+
+        data = r.json().get("data", {})
+        username = data.get("user").get("user_email")
+        if not username:
+            raise HTTPException(status_code=400, detail="Invalid credentials")
+    else:
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="Invalid credentials")
+
     # Check if user exists in database
     user = User.objects(username=username).first()
     if not user:
-        raise HTTPException(status_code=400, detail="User does not exist")
-
-    # Verify password
-    if not user.password == password:
-        raise HTTPException(status_code=400, detail="Incorrect password")
+        user = User(
+            username=username,
+            email=username,
+            password=password,
+            storage_quota=app_config.default_user_quota,
+            permission=Permission(app_config.default_user_permission),
+        ).save()
+        
+        File(path=username, size=0, owner=user, is_dir=True).save()
 
     # Create access token
     access_token = jwt.encode(
@@ -93,6 +78,10 @@ def login(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
         },
         SECRET_KEY,
         algorithm=ALGORITHM,
+    )
+
+    response.set_cookie(
+        key="access_token", value=f"Bearer {access_token}", httponly=True
     )
 
     return {"access_token": access_token, "token_type": "bearer"}
@@ -122,25 +111,6 @@ def logout(token: Annotated[str, Depends(oauth2_scheme)]):
         return {"message": "Logged out successfully!"}
     except JWTError:
         raise HTTPException(status_code=400, detail="Invalid token")
-
-
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    """
-    Get the username of the user from the access token.
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("username")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    return username
 
 
 class UserSession(BaseModel):

@@ -122,7 +122,7 @@ const LoginPage = () => {
 
 
     const validatePassword = (password) => {
-        const passwordPattern = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@#$%^&!])[A-Za-z\d@#$%^&!]{8,}$/;
+        const passwordPattern = /^.{8,}$/;
         return passwordPattern.test(password);
     };
     return (
@@ -155,9 +155,9 @@ const LoginPage = () => {
                         <TabPane tab="Login" key="login">
                             <LoginForm handleLoginSubmit={handleLoginSubmit} validatePassword={validatePassword} />
                         </TabPane>
-                        <TabPane tab="Signup" key="signup">
+                        {/* <TabPane tab="Signup" key="signup">
                             <SignupForm handleSignupSubmit={handleSignupSubmit} validatePassword={validatePassword} />
-                        </TabPane>
+                        </TabPane> */}
                     </Tabs>
                 </div>
                 <Toaster />

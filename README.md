@@ -19,7 +19,7 @@ More documentation available in the [Here](/docs/).
 Configure `credentials.toml` in `/backend` to point to the correct database and minio server. If you are using docker for mongodb and minio, uncomment the commented host addresses.
 
 Then start the docker containers
-```
+```bash
 docker-compose up -d
 ```
 
@@ -31,6 +31,7 @@ The backend is configured through to two TOML files. The first is `credentials.t
 ```toml
 # credentials.toml
 [auth]
+auth-url = "https://datafoundation.iiit.ac.in/api"
 secret-key = "supertopsecret"
 algorithm = "HS256"
 access-token-expire-minutes = 30

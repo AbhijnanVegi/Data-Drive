@@ -5,9 +5,9 @@ export const LoginForm = ({ handleLoginSubmit, validatePassword }) => (
   <Form name="login-form" onFinish={handleLoginSubmit}>
     <Form.Item
       name="username"
-      rules={[{ required: true, message: 'Please enter your username!' }]}
+      rules={[{ required: true, message: 'Please enter your email!' }]}
     >
-      <Input placeholder="Username" />
+      <Input placeholder="Email" />
     </Form.Item>
     <Form.Item
       name="password"
@@ -19,7 +19,7 @@ export const LoginForm = ({ handleLoginSubmit, validatePassword }) => (
               return Promise.resolve();
             }
             return Promise.reject(
-              'Password must be at least 8 characters long with one uppercase letter, one lowercase letter, and one symbol.'
+              'Password must be at least 8 characters long.'
             );
           },
         },
