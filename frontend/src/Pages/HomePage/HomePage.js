@@ -39,6 +39,9 @@ import { handleCreateFolderFormSubmit } from "../../utils/modalutils/createfolde
 import { CustomFileBrowser } from "../components/CustomFileBrowser";
 import { SharedFileBrowser } from "../components/SharedFileBrowser";
 import handleFolderCreation from "../../utils/createFolder";
+import DeepSearchModal from "../components/DeepSearchModal";
+import { Button } from "antd";
+
 
 setChonkyDefaults({ iconComponent: ChonkyIconFA });
 
@@ -74,6 +77,7 @@ const HomePage = () => {
   const [config, setConfig] = useState({})
   const [isMarkdownModalOpen, setIsMarkdownModalOpen] = useState(false);
   const [markdown, setMarkdown] = useState('');
+  const [isDeepSearchModalOpen, setIsDeepSearchModalOpen] = useState(false);
 
   const showModal = () => {
     setIsCreateFolderModalOpen(true);
@@ -312,6 +316,7 @@ const HomePage = () => {
       </div>
       {activeTab === "1" && (
         <>
+          <DeepSearchModal open={isDeepSearchModalOpen} onClose={() => setIsDeepSearchModalOpen(false)} path={path} setPath={setPath} setIsDeepSearchModalOpen={setIsDeepSearchModalOpen}/>
           <CustomFileBrowser
             loading={loading}
             isCreateFolderModalOpen={isCreateFolderModalOpen}
@@ -347,10 +352,12 @@ const HomePage = () => {
             handleAction={handleAction}
           />
           <RightSidebar files={sidebarSelection} />
+          <Button className="deepsearchbutton" type="primary" onClick={() => setIsDeepSearchModalOpen(true)}>Deep Search</Button>
         </>
       )}
       {activeTab === "2" && (
         <>
+          <DeepSearchModal open={isDeepSearchModalOpen} onClose={() => setIsDeepSearchModalOpen(false)} path={sharedpath} setPath={setSharedPath} setIsDeepSearchModalOpen={setIsDeepSearchModalOpen} />
           <SharedFileBrowser
             loading={loading}
             isCreateFolderModalOpen={isCreateFolderModalOpen}
@@ -370,6 +377,7 @@ const HomePage = () => {
             markdown={markdown}
           />
           <RightSidebar files={sidebarSelection} />
+          <Button className="deepsearchbutton" type="primary" onClick={() => setIsDeepSearchModalOpen(true)}>Deep Search</Button>
         </>
       )}
       {
