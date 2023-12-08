@@ -156,6 +156,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
+  width: 300px;
+  flex-shrink: 0;
   height: 100%;
 }
 
@@ -217,6 +219,10 @@
 .deepsearchbutton:hover,
 .deepsearchbutton:focus {
   box-shadow: 0 0.5em 0.5em -0.4em var(--hover);
-  -webkit-transform: translateY(-0.25em);
-  transform: translateY(-0.25em);
+  -webkit-transform: translateY(-1vh);
+  transform: translateY(-1vh);
+}
+
+.ant-notification-notice {
+  cursor: pointer;
 }

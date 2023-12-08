@@ -6,14 +6,21 @@ import api from './api';
  * @param {function} setFolders - The function to update the folders state.
  * @returns {Promise<void>} - A promise that resolves when the user information is fetched and the state is updated.
  */
-const fetchUserInfo = async (setPath, setSharedPath, setFolders, setUser, setIsAdmin) => {
-  try {
-    const res = await api.get('/auth/user');
-    if (res.data.username === null) {
-      window.location.href = '/';
-    } else {
+const fetchUserInfo = async (setPath, setSharedPath, setFolders, setUser, setIsAdmin, setLogin) => {
+  const url = new URL(window.location.href);
+  const pathname = url.pathname;
+  console.log("current location", pathname)
+  api.get('/auth/user')
+    .then((res) => {
       console.log("user details", res);
-      setPath(res.data.username);
+      if (pathname === "/home") {
+        setPath(res.data.username);
+      }
+      else {
+        // remove the first character
+        console.log("pathname", pathname.slice(1))
+        setPath(pathname.slice(1))
+      }
       setSharedPath(res.data.username);
       setUser(res.data);
       setIsAdmin(res.data.admin);
@@ -24,10 +31,12 @@ const fetchUserInfo = async (setPath, setSharedPath, setFolders, setUser, setIsA
         isOpenable: true,
       };
       setFolders([firstFolder]);
-    }
-  } catch (err) {
-    console.error(err);
-  }
+      setLogin(true);
+    })
+    .catch((err) => {
+      setPath(pathname.slice(1))
+    });
+
 };
 
 export default fetchUserInfo;

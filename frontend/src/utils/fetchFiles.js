@@ -1,5 +1,6 @@
 import api from './api';
 import createFileElement from './createFileElement';
+import { notifyFailure } from './toaster';
 
 /**
  * Checks if the provided file is an image.
@@ -18,7 +19,7 @@ const isImage = (file) => ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg'].includes(f
  * @param {function} setPictures - The state setter function for pictures.
  * @returns {Promise<void>} - A promise that resolves when the files are fetched and the state is updated.
  */
-const fetchFiles = async (path, setFolders, setFiles, setPictures) => {
+const fetchFiles = async (path, setFolders, setFiles, setPictures, login) => {
     try {
         const folderChain = path.split('/').map((_, i, arr) => arr.slice(0, i + 1).join('/'));
         const tempFolderArray = folderChain.map((id, i) => ({
@@ -41,6 +42,15 @@ const fetchFiles = async (path, setFolders, setFiles, setPictures) => {
             .map((element) => element.id);
         setPictures(tempPictures);
     } catch (err) {
+        if (login) {
+            window.location.href = "/notfound"
+        }
+        else {
+            notifyFailure("Please login to continue")
+            setTimeout(() => {
+                window.location.href = "/"
+            }, 5000);
+        }
         console.error(err);
     }
 };

@@ -9,7 +9,7 @@ import { DesktopOutlined, ShareAltOutlined } from '@ant-design/icons';
  * @param {string} props.activeTab - The currently active tab.
  * @returns {JSX.Element} The rendered top menu component.
  */
-const TopMenu = ({ handleMenuClick, activeTab }) => (
+const TopMenu = ({ handleMenuClick, activeTab, setPath, user }) => (
     <Menu
         style={{ marginBottom: 'auto' }}
         onClick={handleMenuClick}
@@ -22,6 +22,9 @@ const TopMenu = ({ handleMenuClick, activeTab }) => (
                 key: '1',
                 icon: <DesktopOutlined />,
                 title: 'Home',
+                onClick: () => {
+                    setPath(user.username);
+                }
             },
             {
                 label: 'Shared',
