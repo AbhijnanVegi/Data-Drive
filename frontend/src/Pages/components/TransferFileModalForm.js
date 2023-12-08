@@ -2,6 +2,13 @@ import React  from "react";
 import { Button, Input } from 'antd';
 import { Modal, Form, Select, message } from 'antd';
 
+/**
+ * TransferFileModalForm component.
+ * 
+ * @param {Object} props - The component props.
+ * @param {Function} props.onSubmit - The function to be called when the form is submitted.
+ * @returns {JSX.Element} The TransferFileModalForm component.
+ */
 const TransferFileModalForm = ({ onSubmit }) => {
     const onFinish = (values) => {
         console.log('Success:', values);

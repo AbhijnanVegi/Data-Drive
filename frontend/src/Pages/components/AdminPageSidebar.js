@@ -5,6 +5,12 @@ import { Button, Modal, Form, Slider, Select, Tag, Input } from 'antd';
 import toast, { Toaster } from "react-hot-toast";
 const { Option } = Select;
 
+/**
+ * Renders the admin sidebar component.
+ * 
+ * @param {Object} config - The configuration object.
+ * @returns {JSX.Element} The admin sidebar component.
+ */
 export const AdminSidebar = (config) => {
     const [numUsers, setNumUsers] = useState(0);
     const [totalSize, setTotalSize] = useState(0);

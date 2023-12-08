@@ -1,6 +1,12 @@
 import React from 'react';
 import { Button, Form, Input } from 'antd';
 
+/**
+ * Represents a form component for creating a folder.
+ * @param {Object} props - The component props.
+ * @param {Function} props.onSubmit - The function to be called when the form is submitted.
+ * @returns {JSX.Element} The JSX element representing the form.
+ */
 const CreateFolderModalForm = ({ onSubmit }) => {
     const onFinish = (values) => {
         console.log('Success:', values);

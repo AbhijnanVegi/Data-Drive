@@ -1,6 +1,12 @@
 import axios from "axios";
 import api from "./api";
 
+/**
+ * Handles file upload.
+ * @param {Array<File>} uploadFile - The selected file to upload.
+ * @param {string} path - The path where the file should be uploaded.
+ * @returns {Promise<any>} - A promise that resolves to the response from the file upload API or rejects with an error.
+ */
 const handleFileUpload = async (uploadFile, path) => {
     // get the selected file from the input
     const file = uploadFile[0];
