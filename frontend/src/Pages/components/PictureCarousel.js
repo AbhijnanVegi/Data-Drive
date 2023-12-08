@@ -12,6 +12,13 @@ const indicatorStyles = {
 };
 
 
+/**
+ * Renders a picture carousel component.
+ * 
+ * @param {Object} props - The component props.
+ * @param {string[]} props.pictures - The array of picture names.
+ * @returns {JSX.Element} The picture carousel component.
+ */
 export const PictureCarousel = ({ pictures }) => {
     const [imageBlobs, setImageBlobs] = useState([]);
 

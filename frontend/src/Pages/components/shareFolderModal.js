@@ -8,6 +8,17 @@ import { Button } from 'antd';
 
 const { Option } = Select;
 
+/**
+ * ShareFolderModal component.
+ *
+ * @component
+ * @param {Object} props - The component props.
+ * @param {boolean} props.open - Indicates whether the modal is open or not.
+ * @param {Function} props.onCancel - The function to be called when the modal is canceled.
+ * @param {Function} props.onSubmit - The function to be called when the form is submitted.
+ * @param {Array} props.selectedFiles - The selected files to be shared.
+ * @returns {JSX.Element} The ShareFolderModal component.
+ */
 function ShareFolderModal({ open, onCancel, onSubmit, selectedFiles }) {
     const [form] = Form.useForm();
     const [users, setUsers] = useState([]);

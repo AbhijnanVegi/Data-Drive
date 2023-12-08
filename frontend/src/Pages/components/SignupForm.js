@@ -1,6 +1,14 @@
 import React from 'react';
 import { Form, Input, Button } from 'antd';
 
+/**
+ * SignupForm component.
+ * 
+ * @param {Object} props - The component props.
+ * @param {Function} props.handleSignupSubmit - The function to handle signup form submission.
+ * @param {Function} props.validatePassword - The function to validate the password.
+ * @returns {JSX.Element} The SignupForm component.
+ */
 export const SignupForm = ({ handleSignupSubmit, validatePassword }) => (
   <Form name="signup-form" onFinish={handleSignupSubmit}>
     <Form.Item

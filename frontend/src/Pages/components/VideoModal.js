@@ -1,4 +1,13 @@
 import Modal from "antd/es/modal/Modal";
+/**
+ * Renders a video modal component.
+ *
+ * @param {Object} props - The component props.
+ * @param {boolean} props.open - Determines if the modal is open or not.
+ * @param {Function} props.onCancel - The function to be called when the modal is canceled.
+ * @param {string} props.activeVideo - The URL of the active video.
+ * @returns {JSX.Element} The video modal component.
+ */
 export const VideoModal = ({ open, onCancel, activeVideo }) => (
   <Modal
     open={open}

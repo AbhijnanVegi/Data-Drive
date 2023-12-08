@@ -3,11 +3,8 @@ import Folder from "../../public/Folder.png";
 import "../components/css/components.css"
 import { ChonkyIconFA } from "chonky-icon-fontawesome";
 import { extensions } from "../../utils/extensions";
-import { useState,useEffect } from "react";
+import { useState } from "react";
 import api from "../../utils/api";
-const isImage = (file) => ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg'].includes(file.ext);
-const isVideo = (file) => ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(file.ext);
-const isAudio = (file) => ['mp3', 'wav', 'ogg', 'm4a', 'wma', 'flac', 'aac'].includes(file.ext);
 const formatBytes = (bytes, decimals = 2) => {
   if (bytes === 0) return '0 Bytes';
 
@@ -20,21 +17,21 @@ const formatBytes = (bytes, decimals = 2) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-export const RightSidebar = ({ files, darkMode }) => {
-  const sidebarStyle = darkMode === 'dark' ? {
-    backgroundColor: '#424242',
-    color: '#fff',
-  } : {};
+/**
+ * Renders the right sidebar component.
+ * 
+ * @param {Object} props - The component props.
+ * @param {Array} props.files - The array of files.
+ * @returns {JSX.Element} The right sidebar component.
+ */
+export const RightSidebar = ({ files }) => {
 
-  useEffect(() => {
-    console.log(darkMode);
-  }, [darkMode]);
   const [folderSize, setFolderSize] = useState(0);
   const [folderModDate, setFolderModDate] = useState(0);
 
   if (files.length === 0) {
     return (
-      <div className="right-sidebar" style={sidebarStyle}>
+      <div className="right-sidebar">
         <div className="empty" style={{
           display: 'flex',
           flexDirection: 'column',
@@ -53,7 +50,7 @@ export const RightSidebar = ({ files, darkMode }) => {
   }
   else if (files.length >= 2) {
     return (
-      <div className="right-sidebar" o style={sidebarStyle}>
+      <div className="right-sidebar" >
         <div className="empty">
           <h1 style={{
             display: 'flex',
@@ -76,7 +73,7 @@ export const RightSidebar = ({ files, darkMode }) => {
         path = path.slice(0, -1);
       }
       api.get('/du/' + path).then((res) => {
-        console.log("res",res.data)
+        console.log("res", res.data)
         setFolderSize(res.data.size);
         const date = new Date(res.data.last_modified);
         setFolderModDate(date.toLocaleString());
@@ -84,7 +81,7 @@ export const RightSidebar = ({ files, darkMode }) => {
         console.log(err);
       })
       return (
-        <div className="right-sidebar" style={sidebarStyle}>
+        <div className="right-sidebar">
           <div className="empty" style={{
             display: 'flex',
             flexDirection: 'column',
@@ -126,7 +123,7 @@ export const RightSidebar = ({ files, darkMode }) => {
       const modDate = date.toLocaleString();
 
       return (
-        <div className="right-sidebar" style={sidebarStyle}>
+        <div className="right-sidebar">
           <div className="empty" style={{
             display: 'flex',
             flexDirection: 'column',
@@ -150,7 +147,7 @@ export const RightSidebar = ({ files, darkMode }) => {
 
   }
   return (
-    <div className="right-sidebar" style={sidebarStyle}>
+    <div className="right-sidebar" >
       hello
     </div>
   );
