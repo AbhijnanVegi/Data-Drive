@@ -39,6 +39,7 @@
   background-color: #424242;
   color: #fff;
 }
+
 [data-theme="dark"] [class^='ant'] {
   background-color: #424242;
   color: #fff;
@@ -172,7 +173,7 @@
   position: fixed;
   z-index: 100;
   bottom: 0;
-  left:0;
+  left: 0;
   width: 100%;
   padding: 10px;
   font-size: 0.8em;
@@ -204,4 +205,18 @@
   font-size: 20px;
   font-weight: bold;
   z-index: 100;
+}
+
+.deepsearchbutton{
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+}
+
+.deepsearchbutton:hover,
+.deepsearchbutton:focus {
+  box-shadow: 0 0.5em 0.5em -0.4em var(--hover);
+  -webkit-transform: translateY(-0.25em);
+  transform: translateY(-0.25em);
 }
