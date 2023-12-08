@@ -21,7 +21,7 @@ MINIO_CONFIG = settings.get(
 
 auth_conf = settings.get("auth", {})
 
-AUTH_URL = auth_conf.get("auth-url", "http://localhost:5000")
+AUTH_URL = auth_conf.get("auth-url", "")
 SECRET_KEY = auth_conf.get("secret-key", "secret")
 ALGORITHM = auth_conf.get("algorithm", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = auth_conf.get("access-token-expire-minutes", 30)

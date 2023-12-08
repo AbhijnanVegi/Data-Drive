@@ -39,18 +39,22 @@ def login(data: Annotated[OAuth2PasswordRequestForm, Depends()], response: Respo
     password = data.password
 
     # send request to auth server
-    r = requests.post(
-        f"{AUTH_URL}/login",
-        json={"email": username, "password": password},
-    )
+    if AUTH_URL:
+        r = requests.post(
+            f"{AUTH_URL}/login",
+            json={"email": username, "password": password},
+        )
 
-    if r.status_code != 200:
-        raise HTTPException(status_code=400, detail="Invalid credentials")
+        if r.status_code != 200:
+            raise HTTPException(status_code=400, detail="Invalid credentials")
 
-    data = r.json().get("data", {})
-    username = data.get("user").get("user_email")
-    if not username:
-        raise HTTPException(status_code=400, detail="Invalid credentials")
+        data = r.json().get("data", {})
+        username = data.get("user").get("user_email")
+        if not username:
+            raise HTTPException(status_code=400, detail="Invalid credentials")
+    else:
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="Invalid credentials")
 
     # Check if user exists in database
     user = User.objects(username=username).first()
