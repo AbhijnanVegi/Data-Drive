@@ -169,7 +169,7 @@ const HomePage = () => {
     } else {
       // toast.dismiss(toastId);
       m_totalFiles[reqId]--;
-      // notifyFailure(response.data.message);
+      notifyFailure(response.data.detail);
     }
 
     if (m_totalFiles[reqId] !== 0){
@@ -183,7 +183,10 @@ const HomePage = () => {
       setFiles((files) => [...files, tempElement]);
       setLastUploadedFile(tempElement);
       toast.dismiss(toastId);
-      notifySuccess("Upload complete");
+      if (m_uploadedFiles[reqId] !== 0)
+        notifySuccess("Upload complete");
+      else
+        notifyFailure("Upload failed");
     }
   };
   const [rerender, setRerender] = useState(false);
