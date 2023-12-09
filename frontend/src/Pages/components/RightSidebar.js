@@ -108,7 +108,7 @@ export const RightSidebar = ({ files }) => {
       const owner = targetFile.id.split('/')[0];
       let fileContent;
       if (['JPG', 'JPEG', 'PNG', 'GIF'].includes(ext)) {
-        fileContent = <img src={targetFile.thumbnailUrl} alt={targetFile.name} style={{ width: '250px', height: 'auto' }} />;
+        fileContent = <img src={targetFile.thumbnailUrl} alt="No Preview Available" style={{ width: '250px', height: 'auto' }} />;
       } else if (['MP4', 'AVI', 'MOV'].includes(ext)) {
         fileContent = <ChonkyIconFA icon="video" />;
       } else if (['MP3', 'WAV', 'OGG'].includes(ext)) {

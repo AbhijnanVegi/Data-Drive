@@ -42,14 +42,15 @@ export const SharedFileBrowser = ({
     sharedpictures,
     isMarkdownModalOpen,
     setIsMarkdownModalOpen,
-    markdown
+    markdown,
+    selectedPicture
  }) => {
     return (
         <div className="chonky">
             <Spin size="large" spinning={loading} tip="Loading..." className="centered-opaque-spinner">
                 <CreateFolderModal open={isCreateFolderModalOpen} onCancel={handleCancel} onSubmit={handleCreateFolderFormSubmit} />
                 <VideoModal open={isVideoModalOpen} onCancel={handleVideoModalCancel} activeVideo={activeVideo} />
-                <PictureModal open={isPictureModalOpen} onCancel={handlePictureModalCancel} pictures={sharedpictures} />
+                <PictureModal open={isPictureModalOpen} onCancel={handlePictureModalCancel} selectedPicture={selectedPicture} />
                 <Modal
                     width={1000}
                     open={isMarkdownModalOpen}

@@ -115,13 +115,14 @@ export const openDirectory = (targetFile, setPath) => {
  * @param {Function} setPictures - The function to update the pictures state.
  * @param {Function} setIsPictureModalOpen - The function to update the state of the picture modal.
  */
-export const openImage = (targetFile, pictures, setPictures, setIsPictureModalOpen) => {
+export const openImage = (targetFile, pictures, setPictures, setIsPictureModalOpen, setSelectedPicture) => {
   console.log("pictures", pictures)
   const json = JSON.stringify(pictures);
   const loadjson = JSON.parse(json);
   const index = loadjson.indexOf(targetFile.id);
   const newPictures = loadjson.slice(index).concat(loadjson.slice(0, index));
   console.log("newPictures", newPictures)
+  setSelectedPicture(targetFile.id)
   setPictures(newPictures);
   setIsPictureModalOpen(true);
 };

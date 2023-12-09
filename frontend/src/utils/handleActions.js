@@ -57,7 +57,7 @@ export const deleteSelectedFiles = (data, notifySuccess, notifyFailure, files, s
  * @param {function} setMarkdown - The function to set the markdown content.
  * @param {function} setIsMarkdownModalOpen - The function to set the state of the markdown modal.
  */
-export const handleFileOpen = (targetFile, activeTab, setPath, setSharedPath, path, sharedpath, pictures, setPictures, setIsPictureModalOpen, setActiveVideo, setIsVideoModalOpen, setMarkdown, setIsMarkdownModalOpen) => {
+export const handleFileOpen = (targetFile, activeTab, setPath, setSharedPath, path, sharedpath, pictures, setPictures, setIsPictureModalOpen, setActiveVideo, setIsVideoModalOpen, setMarkdown, setIsMarkdownModalOpen, setSelectedPicture) => {
   console.log("active tab", activeTab);
   if (targetFile.isDir) {
     console.log("opening directory", activeTab);
@@ -78,7 +78,7 @@ export const handleFileOpen = (targetFile, activeTab, setPath, setSharedPath, pa
       fileExtension === "jpeg" || fileExtension === "gif" ||
       fileExtension === "bmp" || fileExtension === "svg"
     ) {
-      openImage(targetFile, pictures, setPictures, setIsPictureModalOpen);
+      openImage(targetFile, pictures, setPictures, setIsPictureModalOpen, setSelectedPicture);
     } else if (fileExtension === "mp4") {
       console.log("opening video modal");
       openVideo(targetFile, setActiveVideo, setIsVideoModalOpen);
