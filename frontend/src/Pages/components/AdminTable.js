@@ -26,25 +26,25 @@ const AdminTable = ({ data, onUpdate }) => {
     });
     const [dataSource, setDataSource] = useState([]);
     const [changedEntries, setChangedEntries] = useState({});
+    const [denominations, setDenominations] = useState({})
     const denominatioChange = {
         "MB": {
             "GB": 1024,
+            "MB" : 1,
             "TB": 1024 * 1024
         },
         "GB": {
             "MB": 1 / 1024,
+            "GB": 1,
             "TB": 1024
         },
         "TB": {
             "MB": 1 / (1024 * 1024),
+            "TB": 1,
             "GB": 1 / 1024
         }
     }
-    // const denomination = (value) => {
-    //     if (value < 1024 * 1024 * 1024) return 'MB';
-    //     else if (value < 1024 * 1024 * 1024 * 1024) return 'GB';
-    //     else if (value < 1024 * 1024 * 1024 * 1024 * 1024) return 'TB';
-    // }
+
     const prevDataRef = useRef();
 
     useEffect(() => {
@@ -83,6 +83,22 @@ const AdminTable = ({ data, onUpdate }) => {
         else if (bytes < 1099511627776) return (bytes / 1073741824).toFixed(2) + ' GB';
         else return (bytes / 1099511627776).toFixed(2) + ' TB';
     }
+    function formatInput(bytes) {
+        if (bytes < 1024) return bytes;
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(2);
+        else if (bytes < 1073741824) return (bytes / 1048576).toFixed(2);
+        else if (bytes < 1099511627776) return (bytes / 1073741824).toFixed(2);
+        else return (bytes / 1099511627776).toFixed(2);
+    }
+    useEffect(() => {
+        const denominationdict = data.map((item, index) => {
+            return {
+                key: index,
+                denomination: denomination(item.storage_used)
+            };
+        });
+        setDenominations(denominationdict);
+    }, [data]);
     function denomination(bytes) {
         if (bytes < 1024) return 'B';
         else if (bytes < 1048576) return 'KB';
@@ -90,6 +106,7 @@ const AdminTable = ({ data, onUpdate }) => {
         else if (bytes < 1099511627776) return 'GB';
         else return 'TB';
     }
+    
     const mapPermissionValue = (value) => {
         switch (value) {
             case 0:
@@ -102,6 +119,13 @@ const AdminTable = ({ data, onUpdate }) => {
                 return 'None';
         }
     };
+    const factors = {
+        "B" : 1,
+        "KB" : 1024,
+        "MB" : 1024 * 1024,
+        "GB" : 1024 * 1024 * 1024,
+        "TB" : 1024 * 1024 * 1024 * 1024
+    }
     const columns = [
         {
             title: 'Admin',
@@ -152,13 +176,20 @@ const AdminTable = ({ data, onUpdate }) => {
                             width: '100px'
                         }}
                     >{formatBytes(text)}</p>
-                    <InputNumber min={1} defaultValue={text / (1024 * 1024 * 1024)} style={{ width: '100px' }} onChange={(value) => { handleQuotaChange(value * (1024 * 1024 * 1024), record); setChangedEntries({ ...changedEntries, [record.key]: true }); }} />
-                    <Select defaultValue="GB" style={{ width: '100px' }} onChange={(value) => {
+                    <InputNumber min={1} defaultValue={formatInput(text)} style={{ width: '100px' }} onChange={(value) => { 
+                        console.log("denominations", denominations[record.key].denomination)
+                        console.log("denomiation text", denomination(text))
+                        console.log("factor", denominatioChange["MB"]["MB"])
+                        let newSizeInBytes = value* factors[denominations[record.key].denomination];
+                        handleQuotaChange(newSizeInBytes, record); 
+                        setChangedEntries({ ...changedEntries, [record.key]: true }); }} />
+                    <Select defaultValue={denomination(text)} style={{ width: '100px' }} onChange={(value) => {
                         console.log("current size", text)
                         console.log("current denomiation", denomination(text))
                         let newSizeInBytes;
                         newSizeInBytes = text * denominatioChange[denomination(text)][value];
                         handleQuotaChange(newSizeInBytes, record);
+                        setDenominations({ ...denominations, [record.key]: value });
                         setChangedEntries({ ...changedEntries, [record.key]: true });
                     }}>
                         <Select.Option value="MB">MB</Select.Option>
