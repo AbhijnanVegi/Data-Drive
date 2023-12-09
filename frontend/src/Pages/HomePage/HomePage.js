@@ -82,6 +82,7 @@ const HomePage = () => {
   const [markdown, setMarkdown] = useState('');
   const [isDeepSearchModalOpen, setIsDeepSearchModalOpen] = useState(false);
   const [login, setLogin] = useState(false);
+  const [selectedPicture, setSelectedPicture] = useState(null);
 
   // const [uploadedFiles, setUploadedFiles] = useState(0);
   let m_uploadedFiles = new Map();
@@ -312,7 +313,7 @@ const HomePage = () => {
       setIsMoveFilesModalOpen(true);
     }
     if (data.id === "open_files") {
-      handleFileOpen(data.payload.targetFile, activeTab, setPath, setSharedPath, path, sharedpath, pictures, setPictures, setIsPictureModalOpen, setActiveVideo, setIsVideoModalOpen, setMarkdown, setIsMarkdownModalOpen);
+      handleFileOpen(data.payload.targetFile, activeTab, setPath, setSharedPath, path, sharedpath, pictures, setPictures, setIsPictureModalOpen, setActiveVideo, setIsVideoModalOpen, setMarkdown, setIsMarkdownModalOpen, setSelectedPicture);
     }
     if (data.id === "change_selection") {
       console.log("change selection");
@@ -342,6 +343,9 @@ const HomePage = () => {
       fetchConfig(setConfig);
     }
   }, [activeTab])
+  useEffect(() => {
+    console.log("selectedpicture", selectedPicture)
+  }, [selectedPicture])
 
   // useEffect(() => {
   //   // console.log(urlPath)
@@ -414,6 +418,7 @@ const HomePage = () => {
             folders={folders}
             fileActions={fileActions}
             handleAction={handleAction}
+            selectedPicture={selectedPicture}
           />
           <RightSidebar files={sidebarSelection} />
           <Button className="deepsearchbutton" type="primary" onClick={() => setIsDeepSearchModalOpen(true)}>Deep Search</Button>
@@ -439,6 +444,7 @@ const HomePage = () => {
             isMarkdownModalOpen={isMarkdownModalOpen}
             setIsMarkdownModalOpen={setIsMarkdownModalOpen}
             markdown={markdown}
+            selectedPicture={selectedPicture}
           />
           <RightSidebar files={sidebarSelection} />
           <Button className="deepsearchbutton" type="primary" onClick={() => setIsDeepSearchModalOpen(true)}>Deep Search</Button>

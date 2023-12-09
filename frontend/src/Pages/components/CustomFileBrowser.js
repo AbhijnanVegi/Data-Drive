@@ -80,7 +80,8 @@ export const CustomFileBrowser = ({
     files,
     folders,
     fileActions,
-    handleAction
+    handleAction,
+    selectedPicture
 }) => {
     return (
         <div className="chonky">
@@ -107,7 +108,7 @@ export const CustomFileBrowser = ({
                     <Markdown>{markdown}</Markdown>
                 </Modal>
                 <VideoModal open={isVideoModalOpen} onCancel={handleVideoModalCancel} activeVideo={activeVideo} />
-                <PictureModal open={isPictureModalOpen} onCancel={handlePictureModalCancel} pictures={pictures} />
+                <PictureModal open={isPictureModalOpen} onCancel={handlePictureModalCancel} selectedPicture={selectedPicture} />
                 <FullFileBrowser
                     files={files}
                     folderChain={folders}
