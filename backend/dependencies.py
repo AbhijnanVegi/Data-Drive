@@ -55,6 +55,7 @@ def get_auth_user(token: Annotated[str, Depends(oauth2_scheme)], response: Respo
             SECRET_KEY,
             algorithm=ALGORITHM,
         )
+        exp = datetime.fromtimestamp(exp)
         InvalidToken(token=token, exp=exp).save()
         response.set_cookie(
             key="access_token", value=f"Bearer {access_token}", httponly=True
