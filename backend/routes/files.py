@@ -92,15 +92,18 @@ async def upload_file(
     """
     fileObj = File.objects(path=path).first()
     if fileObj:
-        return {"message": "File already exists!"}
+        raise HTTPException(status_code=400, detail="File already exists!")
 
     directory = File.objects(path=os.path.dirname(path)).first()
     if not directory:
-        return {"message": "Directory does not exist!"}
+        raise HTTPException(status_code=400, detail="Directory does not exist!")
 
     user = User.objects(username=username).first()
     if not directory.can_write(user):
-        return {"message": "You do not have permission to upload to this directory!"}
+        raise HTTPException(
+            status_code=400,
+            detail="You do not have permission to upload to this directory!",
+        )
 
     file_ext = os.path.splitext(file.filename)[1]
     ALLOWED_FILE_EXTENSIONS = app_config.allowed_file_extensions
@@ -115,7 +118,7 @@ async def upload_file(
     # Get quota user
     quota_user = User.objects(username=path.split("/")[0]).first()
     if quota_user.storage_used + file.size > quota_user.storage_quota:
-        return {"message": "User storage quota exceeded!"}
+        raise HTTPException(status_code=400, detail="User storage quota exceeded!")
 
     try:
         background_tasks.add_task(
@@ -131,7 +134,7 @@ async def upload_file(
 
     except Exception as err:
         print(err)
-        return {"message": str(err)}
+        raise HTTPException(status_code=400, detail=str(err))
 
 
 @files_router.post("/mkdir", response_model=MessageResponse)
@@ -886,7 +889,7 @@ def rename(
     if not src_file:
         raise HTTPException(status_code=400, detail="File does not exist!")
 
-    if not src_file.can_write(usr):
+    if not src_file.can_write(username):
         raise HTTPException(status_code=400, detail="You do not have permission to rename this file!")
 
     # check if the new name is valid, i.e. it does not contain any slashes, and it does not already exist
