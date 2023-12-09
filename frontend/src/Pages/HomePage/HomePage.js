@@ -424,6 +424,7 @@ const HomePage = () => {
             fileActions={fileActions}
             handleAction={handleAction}
             selectedPicture={selectedPicture}
+            setIsShareFolderModalOpen={setIsShareFolderModalOpen}
           />
           <RightSidebar files={sidebarSelection} />
           <Button className="deepsearchbutton" type="primary" onClick={() => setIsDeepSearchModalOpen(true)}>Deep Search</Button>
