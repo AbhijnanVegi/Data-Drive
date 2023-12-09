@@ -169,7 +169,7 @@ const HomePage = () => {
     } else {
       // toast.dismiss(toastId);
       m_totalFiles[reqId]--;
-      notifyFailure(response.data.detail);
+      notifyFailure("Failed to upload file!");
     }
 
     if (m_totalFiles[reqId] !== 0){
