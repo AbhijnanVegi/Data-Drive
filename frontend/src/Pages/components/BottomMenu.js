@@ -1,5 +1,5 @@
 import { Menu, Progress } from 'antd';
-import { LogoutOutlined, IdcardTwoTone } from '@ant-design/icons';
+import { LogoutOutlined, IdcardTwoTone, UserOutlined } from '@ant-design/icons';
 
 function formatBytes(bytes) {
     if (bytes < 1024) return bytes + ' B';
@@ -39,11 +39,19 @@ const BottomMenu = ({ handleMenuClick, activeTab, user, handleLogout, isAdmin })
                             status="active"
                             strokeColor={{ from: '#108ee9', to: '#87d068' }}
                             style={{ fontSize: '12px' }}
+                            percent={((user.storage_used / user.storage_quota) * 100).toFixed(0)}
                         />
                     </div>
                 ),
                 title: 'User',
                 children: [
+                    {
+                        label: <span style={{ color: 'grey' }}>{user.username}</span>,
+                        key: '7',
+                        icon: <UserOutlined style={{ color: 'grey' }} />,
+                        title: 'Logout',
+                        disabled: true,
+                    },
                     {
                         label: <span style={{ color: 'red' }}>Logout</span>,
                         key: '5',

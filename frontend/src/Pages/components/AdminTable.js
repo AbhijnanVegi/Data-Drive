@@ -1,5 +1,7 @@
 import { Button, Table, Select, Slider } from 'antd';
 import { useEffect, useState, useRef } from 'react';
+import { InputNumber } from 'antd';
+
 
 const { Option } = Select;
 
@@ -15,7 +17,7 @@ const AdminTable = ({ data, onUpdate }) => {
         return {
             key: index,
             admin: item.admin,
-            username : item.username,
+            username: item.username,
             email: item.email,
             permission: item.permission,
             storage_quota: item.storage_quota,
@@ -23,6 +25,26 @@ const AdminTable = ({ data, onUpdate }) => {
         };
     });
     const [dataSource, setDataSource] = useState([]);
+    const [changedEntries, setChangedEntries] = useState({});
+    const denominatioChange = {
+        "MB": {
+            "GB": 1024,
+            "TB": 1024 * 1024
+        },
+        "GB": {
+            "MB": 1 / 1024,
+            "TB": 1024
+        },
+        "TB": {
+            "MB": 1 / (1024 * 1024),
+            "GB": 1 / 1024
+        }
+    }
+    // const denomination = (value) => {
+    //     if (value < 1024 * 1024 * 1024) return 'MB';
+    //     else if (value < 1024 * 1024 * 1024 * 1024) return 'GB';
+    //     else if (value < 1024 * 1024 * 1024 * 1024 * 1024) return 'TB';
+    // }
     const prevDataRef = useRef();
 
     useEffect(() => {
@@ -58,23 +80,16 @@ const AdminTable = ({ data, onUpdate }) => {
         if (bytes < 1024) return bytes + ' B';
         else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
         else if (bytes < 1073741824) return (bytes / 1048576).toFixed(2) + ' MB';
-        else return (bytes / 1073741824).toFixed(2) + ' GB';
+        else if (bytes < 1099511627776) return (bytes / 1073741824).toFixed(2) + ' GB';
+        else return (bytes / 1099511627776).toFixed(2) + ' TB';
     }
-
-    const formatter = (value) => {
-        return `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+    function denomination(bytes) {
+        if (bytes < 1024) return 'B';
+        else if (bytes < 1048576) return 'KB';
+        else if (bytes < 1073741824) return 'MB';
+        else if (bytes < 1099511627776) return 'GB';
+        else return 'TB';
     }
-    const marks = {
-        [5 * 1024 * 1024 * 1024]: '5 GB',
-        [50 * 1024 * 1024 * 1024]: '50 GB',
-        [75 * 1024 * 1024 * 1024]: '75 GB',
-        [100 * 1024 * 1024 * 1024]: {
-            style: {
-                color: '#f50',
-            },
-            label: <strong>100 GB</strong>,
-        },
-    };
     const mapPermissionValue = (value) => {
         switch (value) {
             case 0:
@@ -130,20 +145,29 @@ const AdminTable = ({ data, onUpdate }) => {
             key: 'storage_quota',
             align: 'center',
             render: (text, record) => (
-                <div>
-                    <Slider
-                        marks={marks}
-                        min={1 * 1024 * 1024 * 1024} // 1GB in bytes
-                        max={100 * 1024 * 1024 * 1024} // 100GB in bytes
-                        // tooltip={(value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`}
-                        tooltip={{
-                            formatter
+                <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: '10px' }}>
+                    <p
+                        style={{
+                            color: changedEntries[record.key] ? '#f50' : '#1677ff',
+                            width: '100px'
                         }}
-                        defaultValue={text} onChange={(value) => handleQuotaChange(value, record)} />
-                    <p>{formatBytes(text)}</p>
+                    >{formatBytes(text)}</p>
+                    <InputNumber min={1} defaultValue={text / (1024 * 1024 * 1024)} style={{ width: '100px' }} onChange={(value) => { handleQuotaChange(value * (1024 * 1024 * 1024), record); setChangedEntries({ ...changedEntries, [record.key]: true }); }} />
+                    <Select defaultValue="GB" style={{ width: '100px' }} onChange={(value) => {
+                        console.log("current size", text)
+                        console.log("current denomiation", denomination(text))
+                        let newSizeInBytes;
+                        newSizeInBytes = text * denominatioChange[denomination(text)][value];
+                        handleQuotaChange(newSizeInBytes, record);
+                        setChangedEntries({ ...changedEntries, [record.key]: true });
+                    }}>
+                        <Select.Option value="MB">MB</Select.Option>
+                        <Select.Option value="GB">GB</Select.Option>
+                        <Select.Option value="TB">TB</Select.Option>
+                    </Select>
                 </div>
             ),
-            width: '30%',
+            width: '15%',
         },
         {
             title: 'Storage Used',

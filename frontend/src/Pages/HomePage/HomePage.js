@@ -96,7 +96,9 @@ const HomePage = () => {
     setIsCreateFolderModalOpen(false);
   };
   const handlePictureModalCancel = () => {
+    console.log("handlePictureModalCancel called")
     setIsPictureModalOpen(false);
+    setSelectedPicture(null);
   };
 
   const handleVideoModalCancel = () => {

@@ -15,7 +15,10 @@ export const PictureModal = ({ open, onCancel, selectedPicture }) => {
   // create image blob
   const [imageblob, setImageBlob] = useState(null);
   useEffect(() => {
-    console.log("trying to fetch pictures");
+    if (selectedPicture === null){
+      setImageBlob(null);
+      return;
+    }
     api.get(`/get/${selectedPicture}`, {
       responseType: "blob"
     }).then(res => {
@@ -24,7 +27,11 @@ export const PictureModal = ({ open, onCancel, selectedPicture }) => {
     }
     ).catch(err => console.error(err));
   }, [selectedPicture]);
-  
+  useEffect(() => {
+    console.log("trying to fetch pictures");
+    console.log("selectedpicture", selectedPicture);
+  }, [selectedPicture]);
+
   return (
     <Modal
       open={open}
@@ -33,7 +40,7 @@ export const PictureModal = ({ open, onCancel, selectedPicture }) => {
       footer={null}
       onCancel={onCancel}
     >
-      <img src={imageblob} alt="picture" style={{ width: "100%" }} />
+      <img src={imageblob} alt="" style={{ width: "100%" }} />
     </Modal>
   )
 };
