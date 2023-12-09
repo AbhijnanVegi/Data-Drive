@@ -22,7 +22,7 @@ const createFileElement = async (element, lendir) => {
     }
     if (lendir < 10) {
         if (isImage(tempElement)) {
-            api.get(`/get/${tempElement.id}`, {
+            await api.get(`/get/${tempElement.id}`, {
                 responseType: 'blob',
             })
                 .then((res) => {
